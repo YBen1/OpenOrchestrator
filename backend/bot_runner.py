@@ -7,6 +7,7 @@ from typing import Dict, Set
 
 from sqlalchemy.orm import Session
 from models import Bot, Run, Result, new_id, utcnow
+from datetime import datetime
 
 # Active WebSocket connections per bot_id
 ws_connections: Dict[str, Set] = {}
@@ -47,7 +48,10 @@ async def run_bot(bot: Bot, run: Run, db_factory):
             db_run.output = output
             db_run.log = "\n".join(log_lines)
             db_run.finished_at = utcnow()
-            db_run.duration_ms = int((db_run.finished_at - db_run.started_at).total_seconds() * 1000)
+            try:
+                db_run.duration_ms = int((db_run.finished_at.replace(tzinfo=None) - db_run.started_at.replace(tzinfo=None)).total_seconds() * 1000)
+            except Exception:
+                db_run.duration_ms = 0
 
             # Save result
             result = Result(
@@ -76,7 +80,10 @@ async def run_bot(bot: Bot, run: Run, db_factory):
             db_run.status = "failed"
             db_run.log = "\n".join(log_lines)
             db_run.finished_at = utcnow()
-            db_run.duration_ms = int((db_run.finished_at - db_run.started_at).total_seconds() * 1000)
+            try:
+                db_run.duration_ms = int((db_run.finished_at.replace(tzinfo=None) - db_run.started_at.replace(tzinfo=None)).total_seconds() * 1000)
+            except Exception:
+                db_run.duration_ms = 0
             db.commit()
         finally:
             db.close()
