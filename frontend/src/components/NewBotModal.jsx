@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X, Search, Globe, Code, FolderOpen } from 'lucide-react';
 
 const MODELS = [
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
@@ -12,11 +13,18 @@ const MODELS = [
   { value: 'mistral-small-latest', label: 'Mistral Small' },
 ];
 
+const TOOL_ICONS = {
+  web_search: <Search size={14} strokeWidth={2} />,
+  browser: <Globe size={14} strokeWidth={2} />,
+  code: <Code size={14} strokeWidth={2} />,
+  files: <FolderOpen size={14} strokeWidth={2} />,
+};
+
 const TOOLS = [
-  { value: 'web_search', label: '🔍 Web Search' },
-  { value: 'browser', label: '🌐 Browser' },
-  { value: 'code', label: '💻 Code' },
-  { value: 'files', label: '📁 Files' },
+  { value: 'web_search', label: 'Web Search' },
+  { value: 'browser', label: 'Browser' },
+  { value: 'code', label: 'Code' },
+  { value: 'files', label: 'Files' },
 ];
 
 export default function NewBotModal({ onClose, onCreate }) {
@@ -56,7 +64,7 @@ export default function NewBotModal({ onClose, onCreate }) {
           <Field label="Tools">
             <div className="flex flex-wrap gap-2">
               {TOOLS.map(t => (
-                <ToolChip key={t.value} label={t.label} active={form.tools.includes(t.value)} onClick={() => toggleTool(t.value)} />
+                <ToolChip key={t.value} label={t.label} icon={TOOL_ICONS[t.value]} active={form.tools.includes(t.value)} onClick={() => toggleTool(t.value)} />
               ))}
             </div>
           </Field>
@@ -77,7 +85,9 @@ export function ModalHeader({ title, onClose }) {
   return (
     <div className="flex items-center justify-between">
       <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em' }}>{title}</h2>
-      <button onClick={onClose} className="btn-ghost" style={{ width: 28, height: 28, fontSize: 14, padding: 0 }}>✕</button>
+      <button onClick={onClose} className="btn-ghost" style={{ width: 28, height: 28, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <X size={16} strokeWidth={1.5} />
+      </button>
     </div>
   );
 }
@@ -91,7 +101,7 @@ export function Field({ label, children, style }) {
   );
 }
 
-export function ToolChip({ label, active, onClick }) {
+export function ToolChip({ label, icon, active, onClick }) {
   return (
     <button type="button" onClick={onClick} style={{
       padding: '5px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
@@ -99,6 +109,7 @@ export function ToolChip({ label, active, onClick }) {
       background: active ? 'var(--accent-soft)' : 'var(--bg-tertiary)',
       borderColor: active ? 'var(--accent)' : 'var(--border)',
       color: active ? 'var(--accent)' : 'var(--text-secondary)',
-    }}>{label}</button>
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+    }}>{icon}{label}</button>
   );
 }

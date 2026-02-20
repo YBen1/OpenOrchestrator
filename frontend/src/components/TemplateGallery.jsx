@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { X, Search, FolderOpen, Clock } from 'lucide-react';
 import { api } from '../api';
 
 export default function TemplateGallery({ onClose, onCreate }) {
@@ -23,6 +24,11 @@ export default function TemplateGallery({ onClose, onCreate }) {
     });
   };
 
+  const TOOL_LABELS = {
+    web_search: 'Web',
+    files: 'Files',
+  };
+
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'var(--overlay)',
@@ -43,9 +49,9 @@ export default function TemplateGallery({ onClose, onCreate }) {
           </div>
           <button onClick={onClose} style={{
             width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,0.05)',
-            border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)',
+            border: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>✕</button>
+          }}><X size={14} strokeWidth={1.5} /></button>
         </div>
 
         {categories.map(cat => (
@@ -69,8 +75,8 @@ export default function TemplateGallery({ onClose, onCreate }) {
                     <span style={{ fontSize: 24 }}>{tmpl.emoji}</span>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{tmpl.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                        {tmpl.model} {tmpl.schedule ? `· ⏰ ${tmpl.schedule}` : ''}
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {tmpl.model} {tmpl.schedule && <><Clock size={10} strokeWidth={2} /> {tmpl.schedule}</>}
                       </div>
                     </div>
                   </div>
@@ -92,8 +98,9 @@ export default function TemplateGallery({ onClose, onCreate }) {
                           <span key={t} style={{
                             fontSize: 11, padding: '2px 8px', borderRadius: 6,
                             background: 'rgba(0,122,255,0.08)', color: 'var(--accent)',
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
                           }}>
-                            {t === 'web_search' ? '🔍 Web' : t === 'files' ? '📁 Files' : t}
+                            {t === 'web_search' ? <><Search size={10} strokeWidth={2} /> Web</> : t === 'files' ? <><FolderOpen size={10} strokeWidth={2} /> Files</> : t}
                           </span>
                         ))}
                       </div>

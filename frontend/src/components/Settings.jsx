@@ -1,25 +1,26 @@
 import { useState, useEffect } from 'react';
+import { Key, Smartphone, BarChart3, Info, ArrowLeft, CheckCircle2, XCircle, Loader2, ChevronDown, Trash2, Globe, Copy, Search as SearchIcon, AlertTriangle, Server } from 'lucide-react';
 import { api } from '../api';
 
 const PROVIDERS = [
   {
-    id: 'openai', name: 'OpenAI', logo: '/logos/openai.svg', logoColor: '#10a37f', key: 'openai_api_key',
+    id: 'openai', name: 'OpenAI', color: '#10a37f', key: 'openai_api_key',
     models: 'GPT-5, GPT-4.1, o4-mini',
-    cost: '~$5/mo',
+    cost: 'ab ~$5/Mo',
     signupUrl: 'https://platform.openai.com/signup',
     keyUrl: 'https://platform.openai.com/api-keys',
     placeholder: 'sk-...',
   },
   {
-    id: 'anthropic', name: 'Anthropic', logo: '/logos/anthropic.svg', logoColor: '#D4A27F', key: 'anthropic_api_key',
+    id: 'anthropic', name: 'Anthropic', color: '#7c3aed', key: 'anthropic_api_key',
     models: 'Claude Sonnet, Haiku, Opus',
-    cost: '~$5/mo',
+    cost: 'ab ~$5/Mo',
     signupUrl: 'https://console.anthropic.com',
     keyUrl: 'https://console.anthropic.com/settings/keys',
     placeholder: 'sk-ant-...',
   },
   {
-    id: 'google', name: 'Google Gemini', logo: '/logos/google.svg', logoColor: '#4285f4', key: 'google_api_key',
+    id: 'google', name: 'Google Gemini', color: '#4285f4', key: 'google_api_key',
     models: 'Gemini 2.5 Pro, 2.0 Flash',
     cost: 'Free tier available',
     signupUrl: 'https://aistudio.google.com',
@@ -27,46 +28,32 @@ const PROVIDERS = [
     placeholder: 'AIza...',
   },
   {
-    id: 'mistral', name: 'Mistral', logo: '/logos/mistral.svg', logoColor: '#f97316', key: 'mistral_api_key',
+    id: 'mistral', name: 'Mistral', color: '#f97316', key: 'mistral_api_key',
     models: 'Mistral Large, Small',
-    cost: '~$2/mo',
+    cost: 'ab ~$2/Mo',
     signupUrl: 'https://console.mistral.ai',
     keyUrl: 'https://console.mistral.ai/api-keys',
     placeholder: '...',
   },
   {
-    id: 'brave', name: 'Brave Search', logo: '/logos/brave.svg', logoColor: '#fb542b', key: 'brave_api_key',
+    id: 'brave', name: 'Brave Search', color: '#ef4444', key: 'brave_api_key',
     models: 'Web search for bots',
-    cost: '2,000 searches/mo free',
+    cost: '2000 searches/mo free',
     signupUrl: 'https://brave.com/search/api/',
     keyUrl: 'https://api.search.brave.com/app/keys',
     placeholder: 'BSA...',
   },
   {
-    id: 'ollama', name: 'Ollama (Local)', logo: '/logos/ollama.svg', logoColor: '#1C1C1E', key: 'ollama_base_url',
-    models: 'Llama, Mistral, Phi — runs locally',
-    cost: 'Free',
+    id: 'ollama', name: 'Lokal (Ollama)', color: '#8b5cf6', key: 'ollama_base_url',
+    models: 'Llama, Mistral, Phi local',
+    cost: 'Costlos',
     signupUrl: 'https://ollama.com/download',
     keyUrl: null,
     placeholder: 'http://localhost:11434',
     isUrl: true,
+    isOllama: true,
   },
 ];
-
-function ProviderLogo({ provider, size = 28 }) {
-  return (
-    <div style={{
-      width: size + 8, height: size + 8, borderRadius: 10,
-      background: 'var(--bg-tertiary)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0,
-    }}>
-      <img src={provider.logo} alt={provider.name} style={{
-        width: size, height: size, color: provider.logoColor,
-      }} />
-    </div>
-  );
-}
 
 export default function Settings({ onBack }) {
   const [settings, setSettings] = useState({});
@@ -109,25 +96,6 @@ export default function Settings({ onBack }) {
     setTesting(null);
   };
 
-  const findTgChat = async () => {
-    if (!tgToken) return;
-    setTgSearching(true);
-    try {
-      const chat = await api.findTelegramChat(tgToken);
-      setTgChat(chat);
-    } catch {
-      setTgChat({ error: true });
-    }
-    setTgSearching(false);
-  };
-
-  const addTelegramChannel = async () => {
-    if (!tgToken || !tgChat?.chat_id) return;
-    await api.createChannel({ type: 'telegram', name: `Telegram: ${tgChat.name}`, config: { bot_token: tgToken, chat_id: tgChat.chat_id } });
-    setChannels(await api.getChannels());
-    setTgToken(''); setTgChat(null);
-  };
-
   const addWebhook = async () => {
     if (!webhookUrl) return;
     await api.createChannel({ type: 'webhook', name: 'Webhook', config: { url: webhookUrl } });
@@ -136,22 +104,26 @@ export default function Settings({ onBack }) {
   };
 
   const tabs = [
-    { key: 'keys', label: '🔑 API Keys' },
-    { key: 'channels', label: '📱 Channels' },
-    { key: 'usage', label: '📊 Usage' },
-    { key: 'system', label: 'ℹ️ System' },
+    { key: 'keys', label: 'API Keys', icon: <Key size={15} strokeWidth={1.5} /> },
+    { key: 'channels', label: 'Channels', icon: <Smartphone size={15} strokeWidth={1.5} /> },
+    { key: 'usage', label: 'Usage', icon: <BarChart3 size={15} strokeWidth={1.5} /> },
+    { key: 'system', label: 'System', icon: <Info size={15} strokeWidth={1.5} /> },
   ];
 
   return (
     <div className="space-y-8 animate-in">
       <div className="flex items-center justify-between">
         <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>Settings</h2>
-        <button onClick={onBack} className="btn-secondary" style={{ fontSize: 13 }}>← Dashboard</button>
+        <button onClick={onBack} className="btn-secondary" style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <ArrowLeft size={14} strokeWidth={1.5} /> Dashboard
+        </button>
       </div>
 
       <div className="segmented-control">
         {tabs.map(t => (
-          <button key={t.key} data-active={tab === t.key} onClick={() => setTab(t.key)}>{t.label}</button>
+          <button key={t.key} data-active={tab === t.key} onClick={() => setTab(t.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {t.icon} {t.label}
+          </button>
         ))}
       </div>
 
@@ -175,7 +147,11 @@ export default function Settings({ onBack }) {
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.01)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <ProviderLogo provider={p} />
+                  {p.isOllama ? (
+                    <Server size={28} strokeWidth={1.5} style={{ color: p.color, flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
+                  )}
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{p.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{p.models}</div>
@@ -185,16 +161,17 @@ export default function Settings({ onBack }) {
                       fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 20,
                       background: isSet ? 'rgba(52, 199, 89, 0.1)' : 'rgba(142, 142, 147, 0.1)',
                       color: isSet ? '#248A3D' : '#636366',
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
                     }}>
-                      {isSet ? '✅ Connected' : '○ Not connected'}
+                      {isSet ? <><CheckCircle2 size={12} /> Connected</> : <><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#636366', display: 'inline-block' }} /> Not connected</>}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{p.cost}</div>
                   </div>
-                  <span style={{
-                    color: 'var(--text-tertiary)', fontSize: 10,
+                  <ChevronDown size={14} strokeWidth={1.5} style={{
+                    color: 'var(--text-tertiary)',
                     transition: 'transform 0.2s ease',
                     transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                  }}>▼</span>
+                  }} />
                 </div>
 
                 {isExpanded && (
@@ -236,9 +213,9 @@ export default function Settings({ onBack }) {
                           onClick={() => handleTest(p.id)}
                           className="btn-primary"
                           disabled={testing === p.id || !inputs[p.key]}
-                          style={{ opacity: testing === p.id ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                          style={{ opacity: testing === p.id ? 0.6 : 1, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                         >
-                          {testing === p.id ? '⏳ Testing...' : 'Test & Save'}
+                          {testing === p.id ? <><Loader2 size={14} className="animate-spin" /> Testing...</> : 'Test & Save'}
                         </button>
                       </div>
 
@@ -247,10 +224,11 @@ export default function Settings({ onBack }) {
                           marginTop: 12, padding: 12, borderRadius: 10, fontSize: 13,
                           background: result.valid ? 'rgba(52, 199, 89, 0.08)' : 'rgba(255, 59, 48, 0.08)',
                           color: result.valid ? '#248A3D' : '#D70015',
+                          display: 'flex', alignItems: 'center', gap: 6,
                         }}>
                           {result.valid ? (
                             <>
-                              ✅ Connection successful!
+                              <CheckCircle2 size={15} /> Connection successful!
                               {result.models?.length > 0 && (
                                 <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
                                   Available models: {result.models.slice(0, 8).join(', ')}
@@ -259,7 +237,7 @@ export default function Settings({ onBack }) {
                               )}
                             </>
                           ) : (
-                            <>❌ {result.error}</>
+                            <><XCircle size={15} /> {result.error}</>
                           )}
                         </div>
                       )}
@@ -278,12 +256,13 @@ export default function Settings({ onBack }) {
             Get bot results via Telegram, webhook, or email.
           </p>
 
-          {/* Existing channels */}
           {channels.length > 0 && (
             <div className="card divide-y" style={{ borderColor: 'var(--divider)' }}>
               {channels.map(ch => (
                 <div key={ch.id} className="flex items-center gap-4" style={{ padding: '14px 20px' }}>
-                  <span style={{ fontSize: 22 }}>{ch.type === 'telegram' ? '📱' : ch.type === 'webhook' ? '🪝' : '📧'}</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {ch.type === 'telegram' ? <Smartphone size={20} strokeWidth={1.5} /> : ch.type === 'webhook' ? <Globe size={20} strokeWidth={1.5} /> : <Globe size={20} strokeWidth={1.5} />}
+                  </span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 500, fontSize: 14 }}>{ch.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{ch.type}</div>
@@ -291,27 +270,28 @@ export default function Settings({ onBack }) {
                   <span className="status-pill" style={{
                     background: ch.status === 'connected' ? 'rgba(52,199,89,0.1)' : 'rgba(255,59,48,0.1)',
                     color: ch.status === 'connected' ? '#248A3D' : '#D70015',
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
                   }}>
-                    {ch.status === 'connected' ? '✅ Connected' : '❌ Error'}
+                    {ch.status === 'connected' ? <><CheckCircle2 size={12} /> Connected</> : <><XCircle size={12} /> Error</>}
                   </span>
                   <button onClick={async () => {
                     await api.deleteChannel(ch.id);
                     setChannels(await api.getChannels());
                   }} style={{
-                    background: 'none', border: 'none', cursor: 'pointer', fontSize: 16,
-                    color: 'var(--text-tertiary)', padding: 4,
-                  }}>🗑️</button>
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-tertiary)', padding: 4, display: 'flex', alignItems: 'center',
+                  }}><Trash2 size={16} strokeWidth={1.5} /></button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Add Telegram — Guided Wizard */}
           <TelegramWizard onConnected={async () => setChannels(await api.getChannels())} />
 
-          {/* Add Webhook */}
           <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>🪝 Add Webhook</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Globe size={18} strokeWidth={1.5} /> Add Webhook
+            </h3>
             <div className="flex gap-2">
               <input className="input-apple" placeholder="https://example.com/webhook" value={webhookUrl}
                 onChange={e => setWebhookUrl(e.target.value)} style={{ flex: 1 }} />
@@ -340,7 +320,6 @@ export default function Settings({ onBack }) {
             ))}
           </div>
 
-          {/* Per bot */}
           <div className="card divide-y" style={{ borderColor: 'var(--divider)' }}>
             <div style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
               Per Bot
@@ -395,8 +374,8 @@ export default function Settings({ onBack }) {
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Scheduler</span>
-                <span style={{ fontWeight: 500, color: '#248A3D' }}>
-                  {system.scheduler_running ? '✅ Active' : '❌ Inactive'}
+                <span style={{ fontWeight: 500, color: '#248A3D', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  {system.scheduler_running ? <><CheckCircle2 size={14} /> Active</> : <><XCircle size={14} /> Inactive</>}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -437,8 +416,6 @@ export default function Settings({ onBack }) {
 }
 
 
-/* ─── Telegram Guided Wizard ─── */
-
 function TelegramWizard({ onConnected }) {
   const [step, setStep] = useState(0);
   const [token, setToken] = useState('');
@@ -452,8 +429,8 @@ function TelegramWizard({ onConnected }) {
       desc: 'BotFather is Telegram\'s official tool for creating bots. Click the button below to open it.',
       action: (
         <a href="https://t.me/BotFather" target="_blank" rel="noopener"
-          className="btn-primary" style={{ display: 'inline-flex', gap: 8, textDecoration: 'none', padding: '12px 24px' }}>
-          <span>📱</span> Open @BotFather
+          className="btn-primary" style={{ display: 'inline-flex', gap: 8, textDecoration: 'none', padding: '12px 24px', alignItems: 'center' }}>
+          <Smartphone size={16} strokeWidth={1.5} /> Open @BotFather
         </a>
       ),
     },
@@ -468,20 +445,20 @@ function TelegramWizard({ onConnected }) {
         }}>
           <span style={{ color: 'var(--accent)', fontWeight: 600 }}>/newbot</span>
           <button onClick={() => navigator.clipboard.writeText('/newbot')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-tertiary)' }}
-            title="Copy">📋</button>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center' }}
+            title="Copy"><Copy size={16} strokeWidth={1.5} /></button>
         </div>
       ),
     },
     {
       title: 'Paste your token',
       desc: 'BotFather will give you a token that looks like 123456789:ABCdef... — paste it here.',
-      action: null, // custom render
+      action: null,
     },
     {
       title: 'Send your bot a message',
       desc: 'Open your new bot on Telegram and send it any message (e.g. "hi"). This is needed so we can find your chat.',
-      action: null, // dynamic — shows bot link
+      action: null,
     },
     {
       title: 'You\'re connected!',
@@ -498,7 +475,6 @@ function TelegramWizard({ onConnected }) {
       const chat = await api.findTelegramChat(token);
       if (chat && chat.chat_id) {
         setChatFound(chat);
-        // Save the channel
         await api.createChannel({
           type: 'telegram', name: `Telegram: ${chat.name}`,
           config: { bot_token: token, chat_id: chat.chat_id },
@@ -514,16 +490,13 @@ function TelegramWizard({ onConnected }) {
     setTesting(false);
   };
 
-  const botUsername = token.length > 20 ? null : null; // We'll extract from BotFather later
-
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      {/* Header */}
       <div style={{
         padding: '20px 24px 16px', borderBottom: '1px solid var(--divider)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        <span style={{ fontSize: 24 }}>📱</span>
+        <Smartphone size={24} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 650, margin: 0 }}>Connect Telegram</h3>
           <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
@@ -532,7 +505,6 @@ function TelegramWizard({ onConnected }) {
         </div>
       </div>
 
-      {/* Progress */}
       <div style={{
         display: 'flex', gap: 4, padding: '12px 24px',
         background: 'var(--bg-tertiary)',
@@ -546,7 +518,6 @@ function TelegramWizard({ onConnected }) {
         ))}
       </div>
 
-      {/* Step content */}
       <div className="animate-in" style={{ padding: '24px' }}>
         {step < 5 && (
           <>
@@ -569,7 +540,6 @@ function TelegramWizard({ onConnected }) {
           </>
         )}
 
-        {/* Step 0 & 1: static action */}
         {(step === 0 || step === 1) && (
           <div>
             {STEPS[step].action}
@@ -582,7 +552,6 @@ function TelegramWizard({ onConnected }) {
           </div>
         )}
 
-        {/* Step 2: Token input */}
         {step === 2 && (
           <div>
             <input
@@ -610,7 +579,6 @@ function TelegramWizard({ onConnected }) {
           </div>
         )}
 
-        {/* Step 3: Send message + find chat */}
         {step === 3 && (
           <div>
             <div style={{ marginBottom: 16 }}>
@@ -628,32 +596,39 @@ function TelegramWizard({ onConnected }) {
               Send your bot any message (like "hi"), then click the button below.
             </p>
             <button onClick={testToken} className="btn-primary"
-              style={{ padding: '10px 20px', opacity: testing ? 0.6 : 1 }}
+              style={{ padding: '10px 20px', opacity: testing ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}
               disabled={testing}>
               {testing ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="animate-spin">⏳</span> Looking for your chat...
-                </span>
-              ) : '🔍 Find my chat'}
+                <><Loader2 size={14} className="animate-spin" /> Looking for your chat...</>
+              ) : <><SearchIcon size={14} strokeWidth={2} /> Find my chat</>}
             </button>
             {error && (
               <div className="animate-in" style={{
                 marginTop: 12, padding: '12px 16px', borderRadius: 10,
                 background: 'var(--warning-soft)', color: '#C93400', fontSize: 13, lineHeight: 1.5,
+                display: 'flex', alignItems: 'flex-start', gap: 8,
               }}>
-                ⚠️ {error}
-                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  Make sure you opened the bot and sent a message, then try again.
+                <AlertTriangle size={16} strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  {error}
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    Make sure you opened the bot and sent a message, then try again.
+                  </div>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Step 4: Success */}
         {step === 4 && (
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
+              background: 'rgba(52, 199, 89, 0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <CheckCircle2 size={32} strokeWidth={1.5} color="#248A3D" />
+            </div>
             <h4 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>You're connected!</h4>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>
               {chatFound?.name && (
@@ -670,12 +645,12 @@ function TelegramWizard({ onConnected }) {
           </div>
         )}
 
-        {/* Back button for steps 1-3 */}
         {step > 0 && step < 4 && (
           <button onClick={() => { setStep(step - 1); setError(null); }}
             style={{
               marginTop: 12, background: 'none', border: 'none',
               cursor: 'pointer', fontSize: 13, color: 'var(--text-tertiary)',
+              display: 'inline-flex', alignItems: 'center', gap: 4,
             }}>
             ← Back
           </button>

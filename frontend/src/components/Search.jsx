@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Search, Loader2 } from 'lucide-react';
 import { api } from '../api';
 
 export default function SearchModal({ onClose, onSelect }) {
@@ -30,13 +31,13 @@ export default function SearchModal({ onClose, onSelect }) {
         onClick={e => e.stopPropagation()}>
 
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--divider)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 16, color: 'var(--text-tertiary)', flexShrink: 0 }}>🔍</span>
+          <Search size={16} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
           <input ref={inputRef} value={query}
             onChange={e => { setQuery(e.target.value); doSearch(e.target.value); }}
             placeholder="Search results..."
             style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text-primary)', fontFamily: 'inherit' }}
             onKeyDown={e => e.key === 'Escape' && onClose()} />
-          {loading && <span className="animate-spin" style={{ fontSize: 14 }}>⏳</span>}
+          {loading && <Loader2 size={16} className="animate-spin" style={{ color: 'var(--text-tertiary)' }} />}
           <kbd style={{ fontSize: 11, color: 'var(--text-quaternary)', background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>ESC</kbd>
         </div>
 

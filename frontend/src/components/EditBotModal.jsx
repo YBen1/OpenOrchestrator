@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Search, Globe, Code, FolderOpen } from 'lucide-react';
 import { ModalHeader, Field, ToolChip } from './NewBotModal';
 
 const MODELS = [
@@ -11,9 +12,18 @@ const MODELS = [
   { value: 'mistral-small-latest', label: 'Mistral Small' }, { value: 'mistral-large-latest', label: 'Mistral Large' },
 ];
 
+const TOOL_ICONS = {
+  web_search: <Search size={14} strokeWidth={2} />,
+  browser: <Globe size={14} strokeWidth={2} />,
+  code: <Code size={14} strokeWidth={2} />,
+  files: <FolderOpen size={14} strokeWidth={2} />,
+};
+
 const TOOLS = [
-  { value: 'web_search', label: '🔍 Web Search' }, { value: 'browser', label: '🌐 Browser' },
-  { value: 'code', label: '💻 Code' }, { value: 'files', label: '📁 Files' },
+  { value: 'web_search', label: 'Web Search' },
+  { value: 'browser', label: 'Browser' },
+  { value: 'code', label: 'Code' },
+  { value: 'files', label: 'Files' },
 ];
 
 const SCHEDULES = [
@@ -43,7 +53,6 @@ export default function EditBotModal({ bot, onClose, onSave }) {
         <form onSubmit={e => { e.preventDefault(); if(form.name && form.prompt) onSave({ ...form, schedule: form.schedule || null }); }}
           className="space-y-5" style={{ marginTop: 20 }}>
 
-          {/* Enabled toggle */}
           <div className="flex items-center justify-between">
             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Bot active</span>
             <Toggle active={form.enabled} onChange={() => set('enabled', !form.enabled)} />
@@ -74,7 +83,7 @@ export default function EditBotModal({ bot, onClose, onSave }) {
 
           <Field label="Tools">
             <div className="flex flex-wrap gap-2">
-              {TOOLS.map(t => <ToolChip key={t.value} label={t.label} active={form.tools.includes(t.value)} onClick={() => toggleTool(t.value)} />)}
+              {TOOLS.map(t => <ToolChip key={t.value} label={t.label} icon={TOOL_ICONS[t.value]} active={form.tools.includes(t.value)} onClick={() => toggleTool(t.value)} />)}
             </div>
           </Field>
 
