@@ -16,7 +16,7 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {bots.map(bot => (
-              <BotCard key={bot.id} bot={bot} onSelect={onSelect} onRun={onRun} onEdit={onEdit} />
+              <BotCard key={bot.id} bot={bot} onSelect={onSelect} onRun={onRun} onEdit={onEdit} onRefresh={onRefresh} />
             ))}
           </div>
         )}

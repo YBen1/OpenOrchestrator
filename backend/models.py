@@ -66,6 +66,37 @@ class Run(Base):
     output_hash = Column(String, nullable=True)
 
 
+class Pipeline(Base):
+    __tablename__ = "pipelines"
+    id = Column(String, primary_key=True, default=new_id)
+    name = Column(String, nullable=False)
+    description = Column(Text, default="")
+    schedule = Column(String, nullable=True)
+    enabled = Column(Boolean, default=True)
+    error_policy = Column(String, default="abort")  # abort | skip | retry
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class PipelineStep(Base):
+    __tablename__ = "pipeline_steps"
+    id = Column(String, primary_key=True, default=new_id)
+    pipeline_id = Column(String, ForeignKey("pipelines.id", ondelete="CASCADE"), nullable=False)
+    bot_id = Column(String, ForeignKey("bots.id"), nullable=False)
+    step_order = Column(Integer, nullable=False)
+    input_mode = Column(String, default="forward")  # forward | merge | independent
+
+
+class PipelineRun(Base):
+    __tablename__ = "pipeline_runs"
+    id = Column(String, primary_key=True, default=new_id)
+    pipeline_id = Column(String, ForeignKey("pipelines.id"), nullable=False)
+    status = Column(String, default="running")
+    current_step = Column(Integer, default=0)
+    started_at = Column(DateTime, default=utcnow)
+    finished_at = Column(DateTime, nullable=True)
+
+
 class Channel(Base):
     __tablename__ = "channels"
     id = Column(String, primary_key=True, default=new_id)

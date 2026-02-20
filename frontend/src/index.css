@@ -2,7 +2,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-:root {
+:root, [data-theme="light"] {
   color-scheme: light;
   --glass: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(0, 0, 0, 0.06);
@@ -19,6 +19,27 @@
   --text-tertiary: #AEAEB2;
   --border: rgba(0, 0, 0, 0.08);
   --divider: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --glass: rgba(30, 30, 30, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
+  --accent: #0A84FF;
+  --accent-hover: #409CFF;
+  --bg: #1C1C1E;
+  --card: #2C2C2E;
+  --text-primary: #F2F2F7;
+  --text-secondary: #8E8E93;
+  --text-tertiary: #636366;
+  --border: rgba(255, 255, 255, 0.1);
+  --divider: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] body {
+  background: var(--bg);
+  color: var(--text-primary);
 }
 
 body {

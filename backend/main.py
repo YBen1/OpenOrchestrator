@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import engine, Base, SessionLocal, get_db
-from models import Bot, Run, Result, Trigger, Setting, Channel, BotChannel, new_id, utcnow
+from models import Bot, Run, Result, Trigger, Setting, Channel, BotChannel, Pipeline, PipelineStep, PipelineRun, new_id, utcnow
 from schemas import BotCreate, BotUpdate, BotOut, TriggerCreate, TriggerOut, RunOut, ResultOut
 from bot_runner import run_bot, ws_connections, active_tasks
 from scheduler import init_scheduler, shutdown_scheduler, register_bot, unregister_bot
@@ -544,6 +544,145 @@ def update_bot_channels(bot_id: str, data: list[BotChannelUpdate], db: Session =
         db.add(BotChannel(bot_id=bot_id, channel_id=item.channel_id, notify_rule=item.notify_rule))
     db.commit()
     return {"ok": True}
+
+
+# ── Bot Duplicate ─────────────────────────────────────────
+
+@app.post("/api/bots/{bot_id}/duplicate", response_model=BotOut)
+def duplicate_bot(bot_id: str, db: Session = Depends(get_db)):
+    bot = db.query(Bot).get(bot_id)
+    if not bot:
+        raise HTTPException(404, "Bot not found")
+    new_bot_id = new_id()
+    docs = os.path.join(BOT_DATA, new_bot_id)
+    os.makedirs(docs, exist_ok=True)
+    dup = Bot(
+        id=new_bot_id, name=f"{bot.name} (Kopie)", emoji=bot.emoji,
+        description=bot.description, prompt=bot.prompt, model=bot.model,
+        tools=bot.tools, schedule=None, docs_path=docs, notify=bot.notify,
+        enabled=True, max_runtime_seconds=bot.max_runtime_seconds,
+    )
+    db.add(dup)
+    db.commit()
+    db.refresh(dup)
+    return _bot_to_out(dup)
+
+
+# ── Bot Stats ─────────────────────────────────────────────
+
+@app.get("/api/bots/{bot_id}/stats")
+def get_bot_stats(bot_id: str, db: Session = Depends(get_db)):
+    runs = db.query(Run).filter(Run.bot_id == bot_id).all()
+    if not runs:
+        return {"runs": 0, "completed": 0, "failed": 0, "rate": 0, "avg_duration": 0,
+                "total_tokens": 0, "total_cost": 0}
+    completed = sum(1 for r in runs if r.status == "completed")
+    failed = sum(1 for r in runs if r.status == "failed")
+    durations = [r.duration_ms for r in runs if r.duration_ms]
+    tokens = sum((r.tokens_in or 0) + (r.tokens_out or 0) for r in runs)
+    cost = sum(r.cost_estimate or 0 for r in runs)
+    return {
+        "runs": len(runs),
+        "completed": completed,
+        "failed": failed,
+        "rate": round(completed / len(runs) * 100) if runs else 0,
+        "avg_duration": round(sum(durations) / len(durations)) if durations else 0,
+        "total_tokens": tokens,
+        "total_cost": round(cost, 4),
+    }
+
+
+# ── Pipelines ─────────────────────────────────────────────
+
+class PipelineCreate(BaseModel):
+    name: str
+    description: str = ""
+    schedule: Optional[str] = None
+    error_policy: str = "abort"
+    steps: list  # [{"bot_id": "...", "input_mode": "forward"}, ...]
+
+
+@app.get("/api/pipelines")
+def list_pipelines(db: Session = Depends(get_db)):
+    pipelines = db.query(Pipeline).order_by(Pipeline.created_at.desc()).all()
+    result = []
+    for p in pipelines:
+        steps = db.query(PipelineStep).filter(
+            PipelineStep.pipeline_id == p.id
+        ).order_by(PipelineStep.step_order).all()
+        step_data = []
+        for s in steps:
+            bot = db.query(Bot).get(s.bot_id)
+            step_data.append({
+                "id": s.id, "bot_id": s.bot_id, "step_order": s.step_order,
+                "input_mode": s.input_mode,
+                "bot_name": bot.name if bot else "?",
+                "bot_emoji": bot.emoji if bot else "🤖",
+            })
+        # Last run
+        last_run = db.query(PipelineRun).filter(
+            PipelineRun.pipeline_id == p.id
+        ).order_by(PipelineRun.started_at.desc()).first()
+        result.append({
+            "id": p.id, "name": p.name, "description": p.description,
+            "schedule": p.schedule, "enabled": p.enabled,
+            "error_policy": p.error_policy, "steps": step_data,
+            "last_status": last_run.status if last_run else None,
+            "last_run_at": last_run.started_at.isoformat() if last_run and last_run.started_at else None,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        })
+    return result
+
+
+@app.post("/api/pipelines")
+def create_pipeline(data: PipelineCreate, db: Session = Depends(get_db)):
+    p = Pipeline(
+        id=new_id(), name=data.name, description=data.description,
+        schedule=data.schedule, error_policy=data.error_policy,
+    )
+    db.add(p)
+    db.flush()
+    for i, step in enumerate(data.steps):
+        db.add(PipelineStep(
+            id=new_id(), pipeline_id=p.id, bot_id=step["bot_id"],
+            step_order=i + 1, input_mode=step.get("input_mode", "forward"),
+        ))
+    db.commit()
+    return {"id": p.id, "name": p.name}
+
+
+@app.delete("/api/pipelines/{pipeline_id}")
+def delete_pipeline(pipeline_id: str, db: Session = Depends(get_db)):
+    p = db.query(Pipeline).get(pipeline_id)
+    if not p:
+        raise HTTPException(404)
+    db.query(PipelineStep).filter(PipelineStep.pipeline_id == pipeline_id).delete()
+    db.query(PipelineRun).filter(PipelineRun.pipeline_id == pipeline_id).delete()
+    db.delete(p)
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/pipelines/{pipeline_id}/run")
+async def run_pipeline_endpoint(pipeline_id: str, db: Session = Depends(get_db)):
+    p = db.query(Pipeline).get(pipeline_id)
+    if not p:
+        raise HTTPException(404)
+    from pipeline_runner import run_pipeline
+    asyncio.create_task(run_pipeline(pipeline_id))
+    return {"ok": True, "message": "Pipeline gestartet"}
+
+
+@app.get("/api/pipelines/{pipeline_id}/runs")
+def list_pipeline_runs(pipeline_id: str, db: Session = Depends(get_db)):
+    runs = db.query(PipelineRun).filter(
+        PipelineRun.pipeline_id == pipeline_id
+    ).order_by(PipelineRun.started_at.desc()).limit(20).all()
+    return [{
+        "id": r.id, "status": r.status, "current_step": r.current_step,
+        "started_at": r.started_at.isoformat() if r.started_at else None,
+        "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+    } for r in runs]
 
 
 # ── Templates ─────────────────────────────────────────────

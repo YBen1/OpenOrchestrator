@@ -6,6 +6,7 @@ import NewBotModal from './components/NewBotModal';
 import EditBotModal from './components/EditBotModal';
 import Settings from './components/Settings';
 import TemplateGallery from './components/TemplateGallery';
+import Pipelines from './components/Pipelines';
 
 export default function App() {
   const [bots, setBots] = useState([]);
@@ -13,6 +14,12 @@ export default function App() {
   const [showNewBot, setShowNewBot] = useState(false);
   const [editBot, setEditBot] = useState(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
   const [activity, setActivity] = useState([]);
   const [triggers, setTriggers] = useState([]);
   const [hasKeys, setHasKeys] = useState(true);
@@ -44,7 +51,7 @@ export default function App() {
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       {/* Header */}
       <header style={{
-        background: 'rgba(242, 242, 247, 0.8)',
+        background: darkMode ? 'rgba(28, 28, 30, 0.8)' : 'rgba(242, 242, 247, 0.8)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--border)',
@@ -80,6 +87,17 @@ export default function App() {
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.06)'}
             onMouseLeave={e => { if (view.page !== 'settings') e.currentTarget.style.background = 'transparent' }}
           >⚙️</button>
+          <button onClick={() => setView({ page: 'pipelines' })} style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: view.page === 'pipelines' ? 'rgba(0,0,0,0.06)' : 'transparent',
+            border: 'none', cursor: 'pointer', fontSize: 18,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>🔗</button>
+          <button onClick={() => setDarkMode(!darkMode)} style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>{darkMode ? '☀️' : '🌙'}</button>
           <button onClick={() => setShowTemplates(true)} className="btn-secondary" style={{ fontSize: 13 }}>
             📋 Vorlagen
           </button>
@@ -119,6 +137,8 @@ export default function App() {
             onRun={async (id) => { await api.runBot(id); refresh(); }}
             onEdit={(bot) => setEditBot(bot)}
             onRefresh={refresh} />
+        ) : view.page === 'pipelines' ? (
+          <Pipelines bots={bots} onBack={() => setView({ page: 'dashboard' })} />
         ) : view.page === 'settings' ? (
           <Settings onBack={() => { setView({ page: 'dashboard' }); checkKeys(); }} />
         ) : (

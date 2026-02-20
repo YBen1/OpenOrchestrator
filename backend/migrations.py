@@ -39,6 +39,36 @@ def run_migrations():
         except sqlite3.OperationalError:
             pass
 
+    # Pipelines
+    c.execute("""CREATE TABLE IF NOT EXISTS pipelines (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        schedule TEXT,
+        enabled BOOLEAN DEFAULT 1,
+        error_policy TEXT DEFAULT 'abort',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS pipeline_steps (
+        id TEXT PRIMARY KEY,
+        pipeline_id TEXT REFERENCES pipelines(id) ON DELETE CASCADE,
+        bot_id TEXT REFERENCES bots(id),
+        step_order INTEGER NOT NULL,
+        input_mode TEXT DEFAULT 'forward',
+        UNIQUE(pipeline_id, step_order)
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS pipeline_runs (
+        id TEXT PRIMARY KEY,
+        pipeline_id TEXT REFERENCES pipelines(id),
+        status TEXT DEFAULT 'running',
+        current_step INTEGER DEFAULT 0,
+        started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        finished_at DATETIME
+    )""")
+
     # Channels table
     c.execute("""CREATE TABLE IF NOT EXISTS channels (
         id TEXT PRIMARY KEY,

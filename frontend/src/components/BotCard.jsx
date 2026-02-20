@@ -1,4 +1,6 @@
-export default function BotCard({ bot, onSelect, onRun, onEdit }) {
+import { api } from '../api';
+
+export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
   const isDisabled = bot.enabled === false;
   const statusColors = {
     running: { bg: 'rgba(52, 199, 89, 0.1)', dot: '#34C759', text: '#248A3D' },
@@ -79,6 +81,12 @@ export default function BotCard({ bot, onSelect, onRun, onEdit }) {
           {onEdit && (
             <button onClick={() => onEdit(bot)} className="btn-secondary" style={{ padding: '6px 14px', fontSize: 13 }}>
               ✏️
+            </button>
+          )}
+          {onRefresh && (
+            <button onClick={async () => { await api.duplicateBot(bot.id); onRefresh(); }}
+              className="btn-secondary" style={{ padding: '6px 14px', fontSize: 13 }} title="Duplizieren">
+              📋
             </button>
           )}
         </div>
