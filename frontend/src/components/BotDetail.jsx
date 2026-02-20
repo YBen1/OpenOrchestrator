@@ -75,6 +75,18 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
               ✏️ Bearbeiten
             </button>
           )}
+          <button onClick={async () => {
+            const data = await api.exportBot(botId);
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `${bot.name}.json`; a.click();
+          }} className="btn-secondary" style={{ padding: '8px 14px' }} title="Bot exportieren">
+            📥
+          </button>
+          <a href={api.exportCsv(botId)} className="btn-secondary"
+            style={{ padding: '8px 14px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }} title="CSV exportieren">
+            📊
+          </a>
           <button onClick={async () => { if(confirm('Bot löschen?')) { await api.deleteBot(botId); onRefresh(); onBack(); }}}
             style={{
               background: 'rgba(255, 59, 48, 0.08)', color: '#FF3B30',

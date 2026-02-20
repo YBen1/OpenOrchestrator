@@ -7,6 +7,8 @@ import EditBotModal from './components/EditBotModal';
 import Settings from './components/Settings';
 import TemplateGallery from './components/TemplateGallery';
 import Pipelines from './components/Pipelines';
+import SearchModal from './components/Search';
+import Onboarding from './components/Onboarding';
 
 export default function App() {
   const [bots, setBots] = useState([]);
@@ -15,6 +17,8 @@ export default function App() {
   const [editBot, setEditBot] = useState(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [showSearch, setShowSearch] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('onboarded'));
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -39,6 +43,17 @@ export default function App() {
       setHasKeys(false);
     }
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setShowSearch(true); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); setShowNewBot(true); }
+      if ((e.metaKey || e.ctrlKey) && e.key === ',') { e.preventDefault(); setView({ page: 'settings' }); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -87,6 +102,14 @@ export default function App() {
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.06)'}
             onMouseLeave={e => { if (view.page !== 'settings') e.currentTarget.style.background = 'transparent' }}
           >⚙️</button>
+          <button onClick={() => setShowSearch(true)} style={{
+            height: 36, borderRadius: 10, padding: '0 14px',
+            background: 'rgba(0,0,0,0.04)', border: '1px solid var(--border)',
+            cursor: 'pointer', fontSize: 13, color: 'var(--text-tertiary)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            🔍 Suche <kbd style={{ fontSize: 10, opacity: 0.5 }}>⌘K</kbd>
+          </button>
           <button onClick={() => setView({ page: 'pipelines' })} style={{
             width: 36, height: 36, borderRadius: 10,
             background: view.page === 'pipelines' ? 'rgba(0,0,0,0.06)' : 'transparent',
@@ -163,6 +186,17 @@ export default function App() {
         <TemplateGallery
           onClose={() => setShowTemplates(false)}
           onCreate={async (data) => { await api.createBot(data); setShowTemplates(false); refresh(); }}
+        />
+      )}
+
+      {showOnboarding && (
+        <Onboarding onComplete={() => { setShowOnboarding(false); localStorage.setItem('onboarded', '1'); checkKeys(); }} />
+      )}
+
+      {showSearch && (
+        <SearchModal
+          onClose={() => setShowSearch(false)}
+          onSelect={(botId) => setView({ page: 'detail', botId })}
         />
       )}
 

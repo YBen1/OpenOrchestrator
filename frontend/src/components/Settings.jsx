@@ -61,6 +61,7 @@ export default function Settings({ onBack }) {
   const [testResult, setTestResult] = useState({});
   const [inputs, setInputs] = useState({});
   const [tab, setTab] = useState('keys');
+  const [system, setSystem] = useState(null);
   const [channels, setChannels] = useState([]);
   const [tgToken, setTgToken] = useState('');
   const [tgChat, setTgChat] = useState(null);
@@ -71,6 +72,7 @@ export default function Settings({ onBack }) {
     api.getSettings().then(setSettings);
     api.getUsage().then(setUsage);
     api.getChannels().then(setChannels);
+    api.getSystem().then(setSystem);
   }, []);
 
   const handleTest = async (provider) => {
@@ -122,6 +124,7 @@ export default function Settings({ onBack }) {
     { key: 'keys', label: '🔑 API-Keys' },
     { key: 'channels', label: '📱 Channels' },
     { key: 'usage', label: '📊 Verbrauch' },
+    { key: 'system', label: 'ℹ️ System' },
   ];
 
   return (
@@ -390,6 +393,72 @@ export default function Settings({ onBack }) {
                 Noch keine Nutzung.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'system' && system && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Version', value: system.version, color: 'var(--accent)' },
+              { label: 'Bots', value: system.bots, color: '#5856D6' },
+              { label: 'Runs', value: system.runs, color: '#FF9500' },
+            ].map(s => (
+              <div key={s.label} className="glass-card" style={{ padding: 20, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="glass-card" style={{ padding: 20 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>System-Status</h3>
+            <div className="space-y-3" style={{ fontSize: 14 }}>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Datenbank</span>
+                <span style={{ fontWeight: 500 }}>{system.db_size_mb} MB</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Pipelines</span>
+                <span style={{ fontWeight: 500 }}>{system.pipelines}</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Scheduler</span>
+                <span style={{ fontWeight: 500, color: '#248A3D' }}>
+                  {system.scheduler_running ? '✅ Aktiv' : '❌ Inaktiv'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Verbundene Anbieter</span>
+                <span style={{ fontWeight: 500 }}>
+                  {system.providers_connected?.length > 0
+                    ? system.providers_connected.join(', ')
+                    : 'Keine'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card" style={{ padding: 20 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Tastatur-Kürzel</h3>
+            <div className="space-y-2" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              {[
+                ['⌘/Ctrl + K', 'Suche öffnen'],
+                ['⌘/Ctrl + N', 'Neuer Bot'],
+                ['⌘/Ctrl + ,', 'Einstellungen'],
+                ['ESC', 'Modal schließen'],
+              ].map(([key, desc]) => (
+                <div key={key} className="flex justify-between">
+                  <span>{desc}</span>
+                  <kbd style={{
+                    fontSize: 11, background: 'var(--bg)', padding: '2px 8px',
+                    borderRadius: 4, border: '1px solid var(--border)',
+                    fontFamily: 'SF Mono, Menlo, monospace',
+                  }}>{key}</kbd>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

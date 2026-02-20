@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import engine, Base, SessionLocal, get_db
-from models import Bot, Run, Result, Trigger, new_id, utcnow
+from models import Bot, Run, Result, Trigger, Setting, Pipeline, new_id, utcnow
 from schemas import BotCreate, BotUpdate, BotOut, TriggerCreate, TriggerOut, RunOut, ResultOut
 from bot_runner import run_bot, ws_connections, active_tasks
 from scheduler import init_scheduler, shutdown_scheduler, register_bot, unregister_bot
@@ -337,6 +337,145 @@ async def websocket_endpoint(websocket: WebSocket, bot_id: str):
             await websocket.receive_text()
     except WebSocketDisconnect:
         ws_connections[bot_id].discard(websocket)
+
+
+# ── Search ────────────────────────────────────────────────
+
+@app.get("/api/search")
+def search_results(q: str, db: Session = Depends(get_db)):
+    """Full-text search across all bot outputs and results."""
+    if not q or len(q) < 2:
+        return []
+    pattern = f"%{q}%"
+    runs = db.query(Run).filter(
+        Run.output.ilike(pattern)
+    ).order_by(Run.started_at.desc()).limit(20).all()
+    items = []
+    for r in runs:
+        bot = db.query(Bot).get(r.bot_id)
+        items.append({
+            "id": r.id, "type": "run", "bot_id": r.bot_id,
+            "bot_name": bot.name if bot else "?",
+            "bot_emoji": bot.emoji if bot else "🤖",
+            "status": r.status,
+            "preview": _highlight(r.output or "", q, 200),
+            "started_at": r.started_at.isoformat() if r.started_at else None,
+        })
+    return items
+
+
+def _highlight(text: str, query: str, max_len: int = 200) -> str:
+    """Find the query in text and return surrounding context."""
+    idx = text.lower().find(query.lower())
+    if idx == -1:
+        return text[:max_len]
+    start = max(0, idx - 60)
+    end = min(len(text), idx + len(query) + 140)
+    snippet = text[start:end]
+    if start > 0:
+        snippet = "..." + snippet
+    if end < len(text):
+        snippet = snippet + "..."
+    return snippet
+
+
+# ── Export ────────────────────────────────────────────────
+
+@app.get("/api/bots/{bot_id}/export")
+def export_bot(bot_id: str, db: Session = Depends(get_db)):
+    """Export a bot as JSON (config + recent results)."""
+    bot = db.query(Bot).get(bot_id)
+    if not bot:
+        raise HTTPException(404)
+    runs = db.query(Run).filter(Run.bot_id == bot_id, Run.status == "completed").order_by(Run.started_at.desc()).limit(10).all()
+    return {
+        "version": "1.0",
+        "bot": {
+            "name": bot.name, "emoji": bot.emoji, "description": bot.description,
+            "prompt": bot.prompt, "model": bot.model,
+            "tools": json.loads(bot.tools) if bot.tools else [],
+            "schedule": bot.schedule,
+            "max_runtime_seconds": bot.max_runtime_seconds,
+        },
+        "recent_results": [{
+            "output": r.output, "status": r.status,
+            "started_at": r.started_at.isoformat() if r.started_at else None,
+            "tokens": (r.tokens_in or 0) + (r.tokens_out or 0),
+        } for r in runs],
+    }
+
+
+@app.post("/api/bots/import")
+def import_bot(data: dict, db: Session = Depends(get_db)):
+    """Import a bot from JSON export."""
+    bot_data = data.get("bot", {})
+    if not bot_data.get("name") or not bot_data.get("prompt"):
+        raise HTTPException(400, "Bot needs name and prompt")
+    bot_id = new_id()
+    docs = os.path.join(BOT_DATA, bot_id)
+    os.makedirs(docs, exist_ok=True)
+    bot = Bot(
+        id=bot_id, name=bot_data["name"], emoji=bot_data.get("emoji", "🤖"),
+        description=bot_data.get("description", ""), prompt=bot_data["prompt"],
+        model=bot_data.get("model", "gpt-4o-mini"),
+        tools=json.dumps(bot_data.get("tools", [])),
+        schedule=bot_data.get("schedule"), docs_path=docs,
+        max_runtime_seconds=bot_data.get("max_runtime_seconds", 120),
+    )
+    db.add(bot)
+    db.commit()
+    db.refresh(bot)
+    if bot.schedule:
+        register_bot(bot.id, bot.schedule)
+    return _bot_to_out(bot)
+
+
+# ── Export CSV ────────────────────────────────────────────
+
+@app.get("/api/bots/{bot_id}/export-csv")
+def export_csv(bot_id: str, db: Session = Depends(get_db)):
+    """Export bot runs as CSV."""
+    from fastapi.responses import PlainTextResponse
+    runs = db.query(Run).filter(Run.bot_id == bot_id).order_by(Run.started_at.desc()).limit(100).all()
+    lines = ["Zeitpunkt;Status;Dauer (s);Tokens;Kosten ($);Output"]
+    for r in runs:
+        ts = r.started_at.strftime("%d.%m.%Y %H:%M") if r.started_at else ""
+        dur = f"{r.duration_ms / 1000:.1f}" if r.duration_ms else ""
+        tokens = str((r.tokens_in or 0) + (r.tokens_out or 0))
+        cost = f"{r.cost_estimate:.4f}" if r.cost_estimate else "0"
+        output = (r.output or "").replace(";", ",").replace("\n", " ")[:500]
+        lines.append(f"{ts};{r.status};{dur};{tokens};{cost};{output}")
+    return PlainTextResponse("\n".join(lines), media_type="text/csv",
+                             headers={"Content-Disposition": f"attachment; filename=bot-{bot_id}-runs.csv"})
+
+
+# ── System Info ───────────────────────────────────────────
+
+@app.get("/api/system")
+def system_info(db: Session = Depends(get_db)):
+    """System status overview."""
+    import sqlite3
+    bot_count = db.query(func.count(Bot.id)).scalar()
+    run_count = db.query(func.count(Run.id)).scalar()
+    pipeline_count = db.query(func.count(Pipeline.id)).scalar()
+    # DB size
+    db_path = os.getenv("DATABASE_URL", "sqlite:///./openorchestrator.db").replace("sqlite:///", "")
+    db_size = os.path.getsize(db_path) if os.path.exists(db_path) else 0
+    # Active keys
+    keys_set = []
+    for key in ["openai_api_key", "anthropic_api_key", "google_api_key", "mistral_api_key"]:
+        s = db.query(Setting).get(key)
+        if s and s.value:
+            keys_set.append(key.replace("_api_key", "").capitalize())
+    return {
+        "version": "0.3.0",
+        "bots": bot_count,
+        "runs": run_count,
+        "pipelines": pipeline_count,
+        "db_size_mb": round(db_size / 1024 / 1024, 2),
+        "providers_connected": keys_set,
+        "scheduler_running": True,  # If we got here, it's running
+    }
 
 
 # ── Templates & Health ────────────────────────────────────
