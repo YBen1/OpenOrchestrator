@@ -21,27 +21,43 @@ export default function App() {
   useEffect(() => { refresh(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, []);
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      {/* Header — frosted glass */}
+      <header style={{
+        background: 'rgba(242, 242, 247, 0.8)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid var(--border)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+      }} className="px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🎛️</span>
-          <h1 className="text-xl font-bold tracking-tight">openOrchestrator</h1>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'linear-gradient(135deg, #007AFF, #5856D6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white', fontSize: 18, fontWeight: 700,
+          }}>⚡</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            openOrchestrator
+          </h1>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {view.page !== 'dashboard' && (
             <button onClick={() => setView({ page: 'dashboard' })}
-              className="text-sm text-gray-400 hover:text-white transition">← Dashboard</button>
+              className="btn-secondary" style={{ fontSize: 13 }}>
+              ← Dashboard
+            </button>
           )}
-          <button onClick={() => setShowNewBot(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg transition font-medium">
+          <button onClick={() => setShowNewBot(true)} className="btn-primary">
             + Neuer Bot
           </button>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-6 py-6">
+      <main className="max-w-6xl mx-auto px-8 py-8">
         {view.page === 'dashboard' ? (
           <Dashboard bots={bots} activity={activity} triggers={triggers}
             onSelect={(id) => setView({ page: 'detail', botId: id })}

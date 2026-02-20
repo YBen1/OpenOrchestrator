@@ -1,15 +1,17 @@
+import { useState } from 'react';
 import BotCard from './BotCard';
 
 export default function Dashboard({ bots, activity, triggers, onSelect, onRun, onRefresh }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Bot Grid */}
       <section>
-        <h2 className="text-lg font-semibold mb-4 text-gray-300">Meine Bots</h2>
+        <SectionHeader title="Meine Bots" count={bots.length} />
         {bots.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">
-            <p className="text-4xl mb-3">🤖</p>
-            <p>Noch keine Bots. Erstelle deinen ersten!</p>
+          <div className="glass-card text-center py-20" style={{ color: 'var(--text-tertiary)' }}>
+            <p style={{ fontSize: 48, marginBottom: 12 }}>🤖</p>
+            <p style={{ fontSize: 15, fontWeight: 500 }}>Noch keine Bots erstellt</p>
+            <p style={{ fontSize: 13, marginTop: 4 }}>Klicke auf „+ Neuer Bot" um loszulegen</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -23,17 +25,27 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
       {/* Triggers */}
       {triggers.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold mb-3 text-gray-300">Verknüpfungen</h2>
-          <div className="space-y-2">
+          <SectionHeader title="Verknüpfungen" count={triggers.length} />
+          <div className="glass-card divide-y" style={{ borderColor: 'var(--divider)' }}>
             {triggers.map(t => {
               const src = bots.find(b => b.id === t.source_bot);
               const tgt = bots.find(b => b.id === t.target_bot);
               return (
-                <div key={t.id} className="bg-gray-900 rounded-lg px-4 py-3 flex items-center gap-3 text-sm border border-gray-800">
-                  <span>{src?.emoji || '🤖'} {src?.name || t.source_bot}</span>
-                  <span className="text-gray-500">──{t.event}──▶</span>
-                  <span>{tgt?.emoji || '🤖'} {tgt?.name || t.target_bot}</span>
-                  {!t.enabled && <span className="ml-auto text-gray-600 text-xs">deaktiviert</span>}
+                <div key={t.id} className="px-5 py-3.5 flex items-center gap-3" style={{ fontSize: 14 }}>
+                  <span style={{
+                    width: 28, height: 28, borderRadius: 8, background: 'var(--bg)',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
+                  }}>{src?.emoji || '🤖'}</span>
+                  <span style={{ fontWeight: 500 }}>{src?.name || t.source_bot}</span>
+                  <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>── {t.event} ──▶</span>
+                  <span style={{
+                    width: 28, height: 28, borderRadius: 8, background: 'var(--bg)',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
+                  }}>{tgt?.emoji || '🤖'}</span>
+                  <span style={{ fontWeight: 500 }}>{tgt?.name || t.target_bot}</span>
+                  {!t.enabled && (
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)' }}>deaktiviert</span>
+                  )}
                 </div>
               );
             })}
@@ -42,41 +54,114 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
       )}
 
       {/* Activity Feed */}
-      <section>
-        <h2 className="text-lg font-semibold mb-3 text-gray-300">Letzte Aktivität</h2>
-        {activity.length === 0 ? (
-          <p className="text-gray-600 text-sm">Noch keine Aktivität.</p>
-        ) : (
-          <div className="bg-gray-900 rounded-lg border border-gray-800 divide-y divide-gray-800">
-            {activity.map(a => (
-              <div key={a.id} className="px-4 py-3 flex items-center gap-3 text-sm">
-                <span className="w-16 text-gray-500 shrink-0">
-                  {a.started_at ? new Date(a.started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''}
-                </span>
-                <span>{a.bot_emoji}</span>
-                <span className="font-medium w-28 truncate">{a.bot_name}</span>
-                <span className="text-gray-400 flex-1 truncate">{a.output_preview || '—'}</span>
-                <StatusBadge status={a.status} />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <ActivityFeed activity={activity} bots={bots} onSelect={onSelect} />
     </div>
   );
 }
 
-function StatusBadge({ status }) {
-  const colors = {
-    running: 'bg-green-500/20 text-green-400',
-    completed: 'bg-emerald-500/20 text-emerald-400',
-    failed: 'bg-red-500/20 text-red-400',
-    cancelled: 'bg-gray-500/20 text-gray-400',
-  };
-  const icons = { running: '🟢', completed: '✅', failed: '❌', cancelled: '⏸️' };
+function SectionHeader({ title, count }) {
   return (
-    <span className={`px-2 py-0.5 rounded text-xs ${colors[status] || colors.cancelled}`}>
-      {icons[status] || '?'} {status}
+    <div className="flex items-center gap-3 mb-4">
+      <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>{title}</h2>
+      {count != null && (
+        <span style={{
+          fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
+          background: 'rgba(0,0,0,0.05)', padding: '2px 8px', borderRadius: 10,
+        }}>{count}</span>
+      )}
+    </div>
+  );
+}
+
+function ActivityFeed({ activity, bots, onSelect }) {
+  const [expanded, setExpanded] = useState(null);
+
+  return (
+    <section>
+      <SectionHeader title="Letzte Aktivität" count={activity.length} />
+      {activity.length === 0 ? (
+        <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Noch keine Aktivität.</p>
+      ) : (
+        <div className="glass-card divide-y" style={{ borderColor: 'var(--divider)' }}>
+          {activity.map(a => (
+            <div key={a.id} className="animate-in">
+              <div
+                className="px-5 py-3.5 flex items-center gap-3 cursor-pointer"
+                style={{ fontSize: 14, transition: 'background 0.15s ease' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onClick={() => setExpanded(expanded === a.id ? null : a.id)}
+              >
+                <span style={{ width: 48, color: 'var(--text-tertiary)', fontSize: 13, flexShrink: 0 }}>
+                  {a.started_at ? new Date(a.started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''}
+                </span>
+                <span style={{
+                  width: 28, height: 28, borderRadius: 8, background: 'var(--bg)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0,
+                }}>{a.bot_emoji}</span>
+                <span
+                  style={{ fontWeight: 500, width: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', flexShrink: 0 }}
+                  onClick={(e) => { e.stopPropagation(); if (a.bot_id) onSelect(a.bot_id); }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-primary)'}
+                >{a.bot_name}</span>
+                <span style={{ color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
+                  {a.output_preview || '—'}
+                </span>
+                <StatusPill status={a.status} />
+                <span style={{
+                  color: 'var(--text-tertiary)', fontSize: 10,
+                  transition: 'transform 0.2s ease',
+                  transform: expanded === a.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                }}>▼</span>
+              </div>
+              {expanded === a.id && (
+                <div className="px-5 pb-4 pt-1 animate-in">
+                  <div style={{
+                    background: 'var(--bg)', borderRadius: 12, padding: 16,
+                    fontSize: 13, color: 'var(--text-secondary)',
+                    whiteSpace: 'pre-wrap', maxHeight: 256, overflowY: 'auto',
+                    lineHeight: 1.6,
+                  }}>
+                    {a.output || a.output_preview || (
+                      <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                        {a.status === 'running' ? '⏳ Bot läuft noch...' :
+                         a.status === 'failed' ? '❌ Run fehlgeschlagen — kein Output.' :
+                         'Kein Ergebnis vorhanden.'}
+                      </span>
+                    )}
+                  </div>
+                  {a.duration_ms != null && (
+                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8, display: 'block' }}>
+                      Dauer: {(a.duration_ms / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function StatusPill({ status }) {
+  const styles = {
+    running: { bg: 'rgba(255, 149, 0, 0.1)', color: '#C93400', dot: '#FF9500' },
+    completed: { bg: 'rgba(52, 199, 89, 0.1)', color: '#248A3D', dot: '#34C759' },
+    failed: { bg: 'rgba(255, 59, 48, 0.1)', color: '#D70015', dot: '#FF3B30' },
+    cancelled: { bg: 'rgba(142, 142, 147, 0.1)', color: '#636366', dot: '#8E8E93' },
+  };
+  const labels = { running: 'Läuft', completed: 'Fertig', failed: 'Fehler', cancelled: 'Abgebrochen' };
+  const s = styles[status] || styles.cancelled;
+
+  return (
+    <span className="status-pill" style={{ background: s.bg, color: s.color, flexShrink: 0 }}>
+      <span style={{
+        width: 6, height: 6, borderRadius: '50%', background: s.dot, display: 'inline-block',
+      }} className={status === 'running' ? 'pulse-dot' : ''} />
+      {labels[status] || status}
     </span>
   );
 }

@@ -154,6 +154,7 @@ def activity_feed(db: Session = Depends(get_db)):
             "finished_at": r.finished_at.isoformat() if r.finished_at else None,
             "duration_ms": r.duration_ms,
             "output_preview": (r.output or "")[:120],
+            "output": r.output,
         })
     return items
 

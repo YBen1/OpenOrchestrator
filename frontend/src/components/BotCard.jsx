@@ -1,27 +1,68 @@
 export default function BotCard({ bot, onSelect, onRun }) {
+  const statusColors = {
+    running: { bg: 'rgba(52, 199, 89, 0.1)', dot: '#34C759', text: '#248A3D' },
+    completed: { bg: 'rgba(52, 199, 89, 0.1)', dot: '#34C759', text: '#248A3D' },
+    failed: { bg: 'rgba(255, 59, 48, 0.1)', dot: '#FF3B30', text: '#D70015' },
+    idle: { bg: 'rgba(142, 142, 147, 0.1)', dot: '#8E8E93', text: '#636366' },
+  };
+  const s = statusColors[bot.last_status] || statusColors.idle;
+
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 hover:border-gray-700 transition cursor-pointer group"
-      onClick={() => onSelect(bot.id)}>
+    <div
+      className="glass-card hover-lift p-5 cursor-pointer"
+      onClick={() => onSelect(bot.id)}
+      style={{ transition: 'all 0.2s ease' }}
+    >
+      {/* Header */}
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{bot.emoji}</span>
-          <h3 className="font-semibold text-white">{bot.name}</h3>
+        <div className="flex items-center gap-3">
+          <div style={{
+            width: 42, height: 42, borderRadius: 12,
+            background: 'var(--bg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22,
+          }}>
+            {bot.emoji}
+          </div>
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+              {bot.name}
+            </h3>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{bot.model}</span>
+          </div>
         </div>
         {bot.schedule && (
-          <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">⏰ {bot.schedule}</span>
+          <span style={{
+            fontSize: 11, color: 'var(--text-secondary)',
+            background: 'var(--bg)', padding: '3px 8px', borderRadius: 8,
+          }}>⏰ {bot.schedule}</span>
         )}
       </div>
-      <p className="text-sm text-gray-400 mb-4 line-clamp-2">{bot.description || bot.prompt}</p>
+
+      {/* Description */}
+      <p style={{
+        fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
+        marginBottom: 16, display: '-webkit-box', WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical', overflow: 'hidden',
+      }}>
+        {bot.description || bot.prompt}
+      </p>
+
+      {/* Footer */}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">{bot.model}</span>
+        <div className="status-pill" style={{ background: s.bg, color: s.text }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: '50%', background: s.dot,
+            display: 'inline-block',
+          }} className={bot.last_status === 'running' ? 'pulse-dot' : ''} />
+          {bot.last_status || 'Bereit'}
+        </div>
         <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-          <button onClick={() => onRun(bot.id)}
-            className="bg-indigo-600/80 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg transition">
-            ▶️ Run
+          <button onClick={() => onRun(bot.id)} className="btn-primary" style={{ padding: '6px 14px', fontSize: 13 }}>
+            ▶ Run
           </button>
-          <button onClick={() => onSelect(bot.id)}
-            className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-lg transition">
-            📋 Log
+          <button onClick={() => onSelect(bot.id)} className="btn-secondary" style={{ padding: '6px 14px', fontSize: 13 }}>
+            Details
           </button>
         </div>
       </div>
