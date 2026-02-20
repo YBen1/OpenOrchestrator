@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Key, Smartphone, BarChart3, Info, ArrowLeft, CheckCircle2, XCircle, Loader2, ChevronDown, Trash2, Globe, Copy, Search as SearchIcon, AlertTriangle, Server } from 'lucide-react';
+import { Key, Smartphone, BarChart3, Info, ArrowLeft, CheckCircle2, XCircle, Loader2, ChevronDown, Trash2, Globe, Copy, Search as SearchIcon, AlertTriangle, Server, Shield, Plus, Pencil, Eye, EyeOff } from 'lucide-react';
 import { api } from '../api';
 
 const PROVIDERS = [
@@ -69,12 +69,16 @@ export default function Settings({ onBack }) {
   const [tgChat, setTgChat] = useState(null);
   const [tgSearching, setTgSearching] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [credentials, setCredentials] = useState([]);
+  const [credForm, setCredForm] = useState(null); // null = hidden, {} = add, {id:...} = edit
+  const [credShowValue, setCredShowValue] = useState(false);
 
   useEffect(() => {
     api.getSettings().then(setSettings);
     api.getUsage().then(setUsage);
     api.getChannels().then(setChannels);
     api.getSystem().then(setSystem);
+    api.listCredentials().then(setCredentials).catch(() => {});
   }, []);
 
   const handleTest = async (provider) => {
@@ -106,6 +110,7 @@ export default function Settings({ onBack }) {
   const tabs = [
     { key: 'keys', label: 'API Keys', icon: <Key size={15} strokeWidth={1.5} /> },
     { key: 'channels', label: 'Channels', icon: <Smartphone size={15} strokeWidth={1.5} /> },
+    { key: 'credentials', label: 'Credentials', icon: <Shield size={15} strokeWidth={1.5} /> },
     { key: 'usage', label: 'Usage', icon: <BarChart3 size={15} strokeWidth={1.5} /> },
     { key: 'system', label: 'System', icon: <Info size={15} strokeWidth={1.5} /> },
   ];

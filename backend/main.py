@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import engine, Base, SessionLocal, get_db
-from models import Bot, Run, Result, Trigger, Setting, Pipeline, WaitlistEntry, TelegramLink, new_id, utcnow
+from models import Bot, Run, Result, Trigger, Setting, Pipeline, WaitlistEntry, TelegramLink, Credential, BotCredential, new_id, utcnow
 import telegram_bot
 from schemas import BotCreate, BotUpdate, BotOut, TriggerCreate, TriggerOut, RunOut, ResultOut
 from bot_runner import run_bot, ws_connections, active_tasks
@@ -631,3 +631,72 @@ def waitlist_signup(data: dict, db: Session = Depends(get_db)):
 def waitlist_list(db: Session = Depends(get_db)):
     entries = db.query(WaitlistEntry).order_by(WaitlistEntry.created_at.desc()).all()
     return [{"email": e.email, "created_at": e.created_at.isoformat()} for e in entries]
+
+
+# ── Credentials Vault ────────────────────────────────────
+
+@app.get("/api/credentials")
+def list_credentials(db: Session = Depends(get_db)):
+    creds = db.query(Credential).order_by(Credential.created_at.desc()).all()
+    return [{
+        "id": c.id, "name": c.name, "cred_type": c.cred_type,
+        "service": c.service, "shared": c.shared,
+        "created_at": c.created_at.isoformat(),
+        "has_value": bool(c.value),
+    } for c in creds]
+
+@app.post("/api/credentials")
+def create_credential(data: dict, db: Session = Depends(get_db)):
+    from credential_crypto import encrypt
+    name = data.get("name", "").strip()
+    value = data.get("value", "").strip()
+    if not name or not value:
+        raise HTTPException(400, "Name and value required")
+    cred = Credential(
+        id=new_id(), name=name, cred_type=data.get("cred_type", "api_key"),
+        value=encrypt(value), service=data.get("service"),
+        shared=data.get("shared", False),
+    )
+    db.add(cred)
+    db.commit()
+    return {"id": cred.id, "name": cred.name}
+
+@app.put("/api/credentials/{cred_id}")
+def update_credential(cred_id: str, data: dict, db: Session = Depends(get_db)):
+    from credential_crypto import encrypt
+    cred = db.query(Credential).filter(Credential.id == cred_id).first()
+    if not cred:
+        raise HTTPException(404, "Credential not found")
+    if "name" in data: cred.name = data["name"]
+    if "cred_type" in data: cred.cred_type = data["cred_type"]
+    if "service" in data: cred.service = data["service"]
+    if "shared" in data: cred.shared = data["shared"]
+    if "value" in data and data["value"]:
+        cred.value = encrypt(data["value"])
+    db.commit()
+    return {"ok": True}
+
+@app.delete("/api/credentials/{cred_id}")
+def delete_credential(cred_id: str, db: Session = Depends(get_db)):
+    cred = db.query(Credential).filter(Credential.id == cred_id).first()
+    if not cred:
+        raise HTTPException(404)
+    db.delete(cred)
+    db.commit()
+    return {"ok": True}
+
+@app.get("/api/bots/{bot_id}/credentials")
+def get_bot_credentials(bot_id: str, db: Session = Depends(get_db)):
+    assignments = db.query(BotCredential).filter(BotCredential.bot_id == bot_id).all()
+    cred_ids = [a.credential_id for a in assignments]
+    creds = db.query(Credential).filter(Credential.id.in_(cred_ids)).all() if cred_ids else []
+    return [{"id": c.id, "name": c.name, "cred_type": c.cred_type, "service": c.service} for c in creds]
+
+@app.put("/api/bots/{bot_id}/credentials")
+def set_bot_credentials(bot_id: str, data: dict, db: Session = Depends(get_db)):
+    cred_ids = data.get("credential_ids", [])
+    db.query(BotCredential).filter(BotCredential.bot_id == bot_id).delete()
+    for cid in cred_ids:
+        db.add(BotCredential(id=new_id(), bot_id=bot_id, credential_id=cid))
+    db.commit()
+    return {"ok": True}

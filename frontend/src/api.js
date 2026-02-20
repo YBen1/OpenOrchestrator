@@ -52,6 +52,13 @@ export const api = {
   telegramConnections: () => request('/telegram/connections'),
   telegramDisconnect: (id) => request(`/telegram/connections/${id}`, { method: 'DELETE' }),
   telegramTest: (id) => request(`/telegram/test/${id}`, { method: 'POST' }),
+  // Credentials
+  listCredentials: () => request('/credentials'),
+  createCredential: (data) => request('/credentials', { method: 'POST', body: JSON.stringify(data) }),
+  updateCredential: (id, data) => request(`/credentials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCredential: (id) => request(`/credentials/${id}`, { method: 'DELETE' }),
+  getBotCredentials: (botId) => request(`/bots/${botId}/credentials`),
+  setBotCredentials: (botId, ids) => request(`/bots/${botId}/credentials`, { method: 'PUT', body: JSON.stringify({ credential_ids: ids }) }),
   listTriggers: () => request('/triggers'),
   createTrigger: (data) => request('/triggers', { method: 'POST', body: JSON.stringify(data) }),
   deleteTrigger: (id) => request(`/triggers/${id}`, { method: 'DELETE' }),

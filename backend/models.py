@@ -145,3 +145,22 @@ class Result(Base):
     metadata_ = Column("metadata", Text, default="{}")
     pinned = Column(Boolean, default=False)
     created_at = Column(DateTime, default=utcnow)
+
+
+class Credential(Base):
+    __tablename__ = "credentials"
+    id = Column(String, primary_key=True, default=new_id)
+    name = Column(String, nullable=False)
+    cred_type = Column(String, default="api_key")
+    value = Column(Text, nullable=False)
+    service = Column(String, nullable=True)
+    shared = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class BotCredential(Base):
+    __tablename__ = "bot_credentials"
+    id = Column(String, primary_key=True, default=new_id)
+    bot_id = Column(String, ForeignKey("bots.id", ondelete="CASCADE"), nullable=False)
+    credential_id = Column(String, ForeignKey("credentials.id", ondelete="CASCADE"), nullable=False)
