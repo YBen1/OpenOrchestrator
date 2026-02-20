@@ -309,6 +309,112 @@ export default function Settings({ onBack }) {
         </div>
       )}
 
+      {tab === 'credentials' && (
+        <div className="space-y-4">
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+            Store API keys and access tokens for your bots. Credentials are encrypted and stored locally.
+          </p>
+
+          {credentials.map(c => (
+            <div key={c.id} className="card" style={{ padding: '16px 20px' }}>
+              <div className="flex items-center gap-3">
+                <Shield size={20} strokeWidth={1.5} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{c.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', gap: 8, marginTop: 2 }}>
+                    <span style={{
+                      padding: '1px 8px', borderRadius: 10,
+                      background: 'rgba(88,86,214,0.1)', color: '#5856D6',
+                      fontSize: 11, fontWeight: 500,
+                    }}>{c.cred_type}</span>
+                    {c.service && <span>{c.service}</span>}
+                    {c.shared && <span style={{
+                      padding: '1px 8px', borderRadius: 10,
+                      background: 'rgba(52,199,89,0.1)', color: '#248A3D',
+                      fontSize: 11, fontWeight: 500,
+                    }}>shared</span>}
+                  </div>
+                </div>
+                <button onClick={() => {
+                  setCredForm({ id: c.id, name: c.name, cred_type: c.cred_type, service: c.service || '', shared: c.shared, value: '' });
+                  setCredShowValue(false);
+                }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}>
+                  <Pencil size={16} strokeWidth={1.5} />
+                </button>
+                <button onClick={async () => {
+                  await api.deleteCredential(c.id);
+                  setCredentials(await api.listCredentials());
+                }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}>
+                  <Trash2 size={16} strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {credForm && (
+            <div className="card animate-in" style={{ padding: 20 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>
+                {credForm.id ? 'Edit Credential' : 'Add Credential'}
+              </h3>
+              <div className="space-y-3">
+                <input className="input-apple" placeholder="Name (required)" value={credForm.name || ''}
+                  onChange={e => setCredForm(f => ({ ...f, name: e.target.value }))} />
+                <select className="input-apple" value={credForm.cred_type || 'api_key'}
+                  onChange={e => setCredForm(f => ({ ...f, cred_type: e.target.value }))}>
+                  <option value="api_key">API Key</option>
+                  <option value="bearer">Bearer Token</option>
+                  <option value="oauth2">OAuth2</option>
+                  <option value="custom">Custom</option>
+                </select>
+                <input className="input-apple" placeholder="Service (optional, e.g. eBay, Shopify)" value={credForm.service || ''}
+                  onChange={e => setCredForm(f => ({ ...f, service: e.target.value }))} />
+                <div style={{ position: 'relative' }}>
+                  <input className="input-apple" type={credShowValue ? 'text' : 'password'}
+                    placeholder={credForm.id ? 'New value (leave empty to keep)' : 'Value (required)'}
+                    value={credForm.value || ''}
+                    onChange={e => setCredForm(f => ({ ...f, value: e.target.value }))}
+                    style={{ paddingRight: 40 }} />
+                  <button onClick={() => setCredShowValue(!credShowValue)} style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)',
+                  }}>
+                    {credShowValue ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={credForm.shared || false}
+                    onChange={e => setCredForm(f => ({ ...f, shared: e.target.checked }))} />
+                  Shared (available to all bots)
+                </label>
+                <div className="flex gap-2" style={{ marginTop: 8 }}>
+                  <button className="btn-primary" onClick={async () => {
+                    const payload = { ...credForm };
+                    if (!payload.value) delete payload.value;
+                    if (credForm.id) {
+                      await api.updateCredential(credForm.id, payload);
+                    } else {
+                      await api.createCredential(payload);
+                    }
+                    setCredentials(await api.listCredentials());
+                    setCredForm(null);
+                  }} disabled={!credForm.name || (!credForm.id && !credForm.value)}>
+                    Save
+                  </button>
+                  <button className="btn-secondary" onClick={() => setCredForm(null)}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!credForm && (
+            <button className="btn-secondary" onClick={() => setCredForm({ name: '', cred_type: 'api_key', service: '', value: '', shared: false })}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Plus size={14} strokeWidth={1.5} /> Add Credential
+            </button>
+          )}
+        </div>
+      )}
+
       {tab === 'usage' && usage && (
         <div className="space-y-6">
           <div className="grid grid-cols-4 gap-3">
