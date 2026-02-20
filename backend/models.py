@@ -12,6 +12,13 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 
+class WaitlistEntry(Base):
+    __tablename__ = "waitlist"
+    id = Column(String, primary_key=True, default=new_id)
+    email = Column(String, nullable=False, unique=True)
+    created_at = Column(DateTime, default=utcnow)
+
+
 class Setting(Base):
     __tablename__ = "settings"
     key = Column(String, primary_key=True)

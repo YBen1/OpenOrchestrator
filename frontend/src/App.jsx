@@ -57,41 +57,61 @@ export default function App() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
       {/* ─── Header ─── */}
-      <header className="header-bar px-6 py-3 flex items-center justify-between">
+      <header className="header-bar" style={{ padding: '0 24px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* Logo */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => nav('dashboard')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', minWidth: 200 }} onClick={() => nav('dashboard')}>
           <div style={{
-            width: 34, height: 34, borderRadius: 9,
+            width: 30, height: 30, borderRadius: 8,
             background: 'linear-gradient(135deg, #007AFF 0%, #5856D6 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontSize: 16, fontWeight: 700,
-            boxShadow: '0 2px 8px rgba(0, 122, 255, 0.25)',
+            color: 'white', fontSize: 14, fontWeight: 700,
           }}>⚡</div>
-          <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>openOrchestrator</span>
+          <span style={{ fontSize: 15, fontWeight: 650, letterSpacing: '-0.02em' }}>openOrchestrator</span>
         </div>
 
         {/* Center — search */}
         <button onClick={() => setShowSearch(true)} style={{
-          height: 34, borderRadius: 9, padding: '0 14px',
+          height: 32, borderRadius: 8, padding: '0 14px',
           background: 'var(--bg-tertiary)', border: '1px solid var(--border)',
           cursor: 'pointer', fontSize: 13, color: 'var(--text-tertiary)',
-          display: 'flex', alignItems: 'center', gap: 8, minWidth: 200,
-        }}>
-          <span style={{ opacity: 0.5 }}>🔍</span>
+          display: 'flex', alignItems: 'center', gap: 8, minWidth: 220,
+          transition: 'border-color 0.15s, box-shadow 0.15s',
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.4, flexShrink: 0 }}>
+            <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
           <span>Suchen...</span>
-          <kbd style={{ fontSize: 10, marginLeft: 'auto', opacity: 0.4, fontFamily: 'inherit' }}>⌘K</kbd>
+          <kbd style={{ fontSize: 10, marginLeft: 'auto', opacity: 0.35, fontFamily: 'inherit' }}>⌘K</kbd>
         </button>
 
         {/* Right — nav */}
-        <div className="flex items-center gap-2">
-          <button className="icon-btn" data-active={view.page === 'pipelines'} onClick={() => nav('pipelines')} title="Pipelines">🔗</button>
-          <button className="icon-btn" data-active={view.page === 'settings'} onClick={() => nav('settings')} title="Einstellungen">⚙️</button>
-          <button className="icon-btn" onClick={() => setDarkMode(!darkMode)} title={darkMode ? 'Light Mode' : 'Dark Mode'}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 200, justifyContent: 'flex-end' }}>
+          <button className="icon-btn" data-active={view.page === 'pipelines'} onClick={() => nav('pipelines')} title="Pipelines"
+            style={{ width: 34, height: 34, borderRadius: 8, fontSize: 16 }}>🔗</button>
+          <button className="icon-btn" data-active={view.page === 'settings'} onClick={() => nav('settings')} title="Einstellungen"
+            style={{ width: 34, height: 34, borderRadius: 8, fontSize: 16 }}>⚙️</button>
+          <button className="icon-btn" onClick={() => setDarkMode(!darkMode)} title={darkMode ? 'Light Mode' : 'Dark Mode'}
+            style={{ width: 34, height: 34, borderRadius: 8, fontSize: 16 }}>
             {darkMode ? '☀️' : '🌙'}
           </button>
-          <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
-          <button onClick={() => setShowTemplates(true)} className="btn-secondary" style={{ fontSize: 13, padding: '6px 14px' }}>📋 Vorlagen</button>
-          <button onClick={() => setShowNewBot(true)} className="btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}>+ Neuer Bot</button>
+          <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 6px' }} />
+          <button onClick={() => setShowTemplates(true)} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)',
+            background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          >Vorlagen</button>
+          <button onClick={() => setShowNewBot(true)} className="btn-primary" style={{
+            fontSize: 13, padding: '6px 16px', borderRadius: 8, fontWeight: 600,
+          }}>+ Neuer Bot</button>
         </div>
       </header>
 
@@ -99,15 +119,25 @@ export default function App() {
       {!hasKeys && view.page === 'dashboard' && (
         <div className="animate-in" style={{ maxWidth: '72rem', margin: '12px auto 0', padding: '0 24px' }}>
           <div style={{
-            background: 'var(--warning-soft)', border: '1px solid rgba(255, 159, 10, 0.2)',
+            background: 'var(--warning-soft)', border: '1px solid rgba(255, 159, 10, 0.15)',
             borderRadius: 12, padding: '10px 18px',
             display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
           }}>
-            <span>⚠️</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="#FF9F0A" style={{ flexShrink: 0 }}>
+              <path d="M8 1l7 13H1L8 1zm0 4.5v4m0 1.5v1"/>
+            </svg>
             <span style={{ color: 'var(--text-secondary)', flex: 1 }}>
               Kein API-Key konfiguriert — Bots laufen nur im Mock-Modus.
             </span>
-            <button onClick={() => nav('settings')} className="btn-primary" style={{ padding: '5px 12px', fontSize: 12 }}>
+            <button onClick={() => nav('settings')} style={{
+              padding: '5px 14px', fontSize: 12, fontWeight: 600,
+              borderRadius: 8, border: 'none', cursor: 'pointer',
+              background: '#FF9F0A', color: '#fff',
+              transition: 'opacity 0.15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
               Einrichten
             </button>
           </div>

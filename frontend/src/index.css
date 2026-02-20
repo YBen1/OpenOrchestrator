@@ -333,8 +333,8 @@ textarea.input-apple {
 /* ─── Header bar ─── */
 .header-bar {
   background: var(--header-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;

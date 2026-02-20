@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import engine, Base, SessionLocal, get_db
-from models import Bot, Run, Result, Trigger, Setting, Pipeline, new_id, utcnow
+from models import Bot, Run, Result, Trigger, Setting, Pipeline, WaitlistEntry, new_id, utcnow
 from schemas import BotCreate, BotUpdate, BotOut, TriggerCreate, TriggerOut, RunOut, ResultOut
 from bot_runner import run_bot, ws_connections, active_tasks
 from scheduler import init_scheduler, shutdown_scheduler, register_bot, unregister_bot
@@ -489,3 +489,25 @@ def list_templates():
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "openOrchestrator", "version": "0.3.0"}
+
+
+# ── Waitlist ─────────────────────────────────────────────
+
+@app.post("/api/waitlist")
+def waitlist_signup(data: dict, db: Session = Depends(get_db)):
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, "Invalid email")
+    existing = db.query(WaitlistEntry).filter(WaitlistEntry.email == email).first()
+    if existing:
+        return {"ok": True, "message": "already_registered"}
+    entry = WaitlistEntry(id=new_id(), email=email)
+    db.add(entry)
+    db.commit()
+    return {"ok": True, "message": "registered"}
+
+
+@app.get("/api/waitlist")
+def waitlist_list(db: Session = Depends(get_db)):
+    entries = db.query(WaitlistEntry).order_by(WaitlistEntry.created_at.desc()).all()
+    return [{"email": e.email, "created_at": e.created_at.isoformat()} for e in entries]
