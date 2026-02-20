@@ -45,6 +45,13 @@ export const api = {
   importBot: (data) => request('/bots/import', { method: 'POST', body: JSON.stringify(data) }),
   exportCsv: (id) => `${BASE}/bots/${id}/export-csv`,
   getSystem: () => request('/system'),
+  // Telegram connect
+  telegramConnect: () => request('/telegram/connect', { method: 'POST' }),
+  telegramStatus: (token) => request(`/telegram/status/${token}`),
+  telegramQrUrl: (token) => `${BASE}/telegram/qr/${token}`,
+  telegramConnections: () => request('/telegram/connections'),
+  telegramDisconnect: (id) => request(`/telegram/connections/${id}`, { method: 'DELETE' }),
+  telegramTest: (id) => request(`/telegram/test/${id}`, { method: 'POST' }),
   listTriggers: () => request('/triggers'),
   createTrigger: (data) => request('/triggers', { method: 'POST', body: JSON.stringify(data) }),
   deleteTrigger: (id) => request(`/triggers/${id}`, { method: 'DELETE' }),

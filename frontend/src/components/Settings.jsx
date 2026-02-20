@@ -291,40 +291,8 @@ export default function Settings({ onBack }) {
             </div>
           )}
 
-          {/* Add Telegram */}
-          <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>📱 Add Telegram</h3>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.6 }}>
-              1. Message{' '}
-              <a href="https://t.me/BotFather" target="_blank" rel="noopener" style={{ color: 'var(--accent)' }}>@BotFather</a>
-              {' '}auf Telegram → <code>/newbot</code><br/>
-              2. You'll get a token (looks like: <code>123456:ABC...</code>)<br/>
-              3. Send your new bot a message, then click "Find chat"
-            </div>
-            <div className="flex gap-2" style={{ marginBottom: 8 }}>
-              <input className="input-apple" placeholder="Paste bot token..." value={tgToken}
-                onChange={e => setTgToken(e.target.value)} style={{ flex: 1 }} />
-              <button onClick={findTgChat} className="btn-secondary" disabled={!tgToken || tgSearching}
-                style={{ whiteSpace: 'nowrap', opacity: tgSearching ? 0.6 : 1 }}>
-                {tgSearching ? '⏳ Searching...' : '🔍 Find chat'}
-              </button>
-            </div>
-            {tgChat && !tgChat.error && (
-              <div className="animate-in flex items-center gap-3" style={{ marginTop: 8 }}>
-                <span style={{ fontSize: 13, color: '#248A3D' }}>
-                  ✅ Chat found: <strong>{tgChat.name}</strong> (ID: {tgChat.chat_id})
-                </span>
-                <button onClick={addTelegramChannel} className="btn-primary" style={{ padding: '6px 14px', fontSize: 13 }}>
-                  Save
-                </button>
-              </div>
-            )}
-            {tgChat?.error && (
-              <div className="animate-in" style={{ fontSize: 13, color: '#D70015', marginTop: 8 }}>
-                ❌ No chat found — send your bot a message on Telegram first
-              </div>
-            )}
-          </div>
+          {/* Add Telegram — Guided Wizard */}
+          <TelegramWizard onConnected={async () => setChannels(await api.getChannels())} />
 
           {/* Add Webhook */}
           <div className="card" style={{ padding: 20 }}>
@@ -428,7 +396,7 @@ export default function Settings({ onBack }) {
           </div>
 
           <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Keyboard Shortcuts</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Keyboard shortcuts</h3>
             <div className="space-y-2" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               {[
                 ['⌘/Ctrl + K', 'Open search'],
@@ -449,6 +417,255 @@ export default function Settings({ onBack }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+/* ─── Telegram Guided Wizard ─── */
+
+function TelegramWizard({ onConnected }) {
+  const [step, setStep] = useState(0);
+  const [token, setToken] = useState('');
+  const [testing, setTesting] = useState(false);
+  const [chatFound, setChatFound] = useState(null);
+  const [error, setError] = useState(null);
+
+  const STEPS = [
+    {
+      title: 'Open BotFather',
+      desc: 'BotFather is Telegram\'s official tool for creating bots. Click the button below to open it.',
+      action: (
+        <a href="https://t.me/BotFather" target="_blank" rel="noopener"
+          className="btn-primary" style={{ display: 'inline-flex', gap: 8, textDecoration: 'none', padding: '12px 24px' }}>
+          <span>📱</span> Open @BotFather
+        </a>
+      ),
+    },
+    {
+      title: 'Create your bot',
+      desc: 'Send BotFather this command. Then choose any name and username for your bot.',
+      action: (
+        <div style={{
+          background: 'var(--bg-tertiary)', borderRadius: 12, padding: '14px 18px',
+          fontFamily: 'SF Mono, Fira Code, Menlo, monospace', fontSize: 15,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>/newbot</span>
+          <button onClick={() => navigator.clipboard.writeText('/newbot')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-tertiary)' }}
+            title="Copy">📋</button>
+        </div>
+      ),
+    },
+    {
+      title: 'Paste your token',
+      desc: 'BotFather will give you a token that looks like 123456789:ABCdef... — paste it here.',
+      action: null, // custom render
+    },
+    {
+      title: 'Send your bot a message',
+      desc: 'Open your new bot on Telegram and send it any message (e.g. "hi"). This is needed so we can find your chat.',
+      action: null, // dynamic — shows bot link
+    },
+    {
+      title: 'You\'re connected!',
+      desc: null,
+      action: null,
+    },
+  ];
+
+  const testToken = async () => {
+    if (!token || token.length < 20) { setError('Token looks too short'); return; }
+    setTesting(true);
+    setError(null);
+    try {
+      const chat = await api.findTelegramChat(token);
+      if (chat && chat.chat_id) {
+        setChatFound(chat);
+        // Save the channel
+        await api.createChannel({
+          type: 'telegram', name: `Telegram: ${chat.name}`,
+          config: { bot_token: token, chat_id: chat.chat_id },
+        });
+        onConnected?.();
+        setStep(4);
+      } else {
+        setError('No chat found yet — did you send your bot a message?');
+      }
+    } catch {
+      setError('No chat found — send your bot a message first, then try again.');
+    }
+    setTesting(false);
+  };
+
+  const botUsername = token.length > 20 ? null : null; // We'll extract from BotFather later
+
+  return (
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{
+        padding: '20px 24px 16px', borderBottom: '1px solid var(--divider)',
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <span style={{ fontSize: 24 }}>📱</span>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 650, margin: 0 }}>Connect Telegram</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
+            Get bot results on your phone — takes about 60 seconds
+          </p>
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div style={{
+        display: 'flex', gap: 4, padding: '12px 24px',
+        background: 'var(--bg-tertiary)',
+      }}>
+        {[0, 1, 2, 3, 4].map(i => (
+          <div key={i} style={{
+            flex: 1, height: 3, borderRadius: 2,
+            background: i <= step ? 'var(--accent)' : 'var(--border)',
+            transition: 'background 0.3s',
+          }} />
+        ))}
+      </div>
+
+      {/* Step content */}
+      <div className="animate-in" style={{ padding: '24px' }}>
+        {step < 5 && (
+          <>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              fontSize: 11, fontWeight: 600, color: 'var(--accent)',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              marginBottom: 8,
+            }}>
+              Step {step + 1} of 5
+            </div>
+            <h4 style={{ fontSize: 17, fontWeight: 650, marginBottom: 8, letterSpacing: '-0.01em' }}>
+              {STEPS[step].title}
+            </h4>
+            {STEPS[step].desc && (
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>
+                {STEPS[step].desc}
+              </p>
+            )}
+          </>
+        )}
+
+        {/* Step 0 & 1: static action */}
+        {(step === 0 || step === 1) && (
+          <div>
+            {STEPS[step].action}
+            <div style={{ marginTop: 20 }}>
+              <button onClick={() => setStep(step + 1)} className="btn-secondary"
+                style={{ padding: '10px 20px' }}>
+                Done, next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Token input */}
+        {step === 2 && (
+          <div>
+            <input
+              type="text"
+              className="input-apple"
+              placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwx..."
+              value={token}
+              onChange={e => { setToken(e.target.value); setError(null); }}
+              style={{ fontFamily: 'SF Mono, Fira Code, Menlo, monospace', fontSize: 13 }}
+              autoFocus
+            />
+            {error && (
+              <div className="animate-in" style={{
+                marginTop: 10, padding: '10px 14px', borderRadius: 10,
+                background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 13,
+              }}>{error}</div>
+            )}
+            <div style={{ marginTop: 16 }}>
+              <button onClick={() => { if (token.length > 20) { setStep(3); setError(null); } else { setError('Please paste a valid bot token'); } }}
+                className="btn-primary" style={{ padding: '10px 20px' }}
+                disabled={token.length < 10}>
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Send message + find chat */}
+        {step === 3 && (
+          <div>
+            <div style={{ marginBottom: 16 }}>
+              <a href={`https://t.me/`} target="_blank" rel="noopener"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 18px', borderRadius: 10,
+                  background: '#0088CC', color: 'white',
+                  textDecoration: 'none', fontSize: 14, fontWeight: 600,
+                }}>
+                Open your bot on Telegram →
+              </a>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.6 }}>
+              Send your bot any message (like "hi"), then click the button below.
+            </p>
+            <button onClick={testToken} className="btn-primary"
+              style={{ padding: '10px 20px', opacity: testing ? 0.6 : 1 }}
+              disabled={testing}>
+              {testing ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="animate-spin">⏳</span> Looking for your chat...
+                </span>
+              ) : '🔍 Find my chat'}
+            </button>
+            {error && (
+              <div className="animate-in" style={{
+                marginTop: 12, padding: '12px 16px', borderRadius: 10,
+                background: 'var(--warning-soft)', color: '#C93400', fontSize: 13, lineHeight: 1.5,
+              }}>
+                ⚠️ {error}
+                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                  Make sure you opened the bot and sent a message, then try again.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 4: Success */}
+        {step === 4 && (
+          <div style={{ textAlign: 'center', padding: '16px 0' }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
+            <h4 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>You're connected!</h4>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>
+              {chatFound?.name && (
+                <>Linked to <strong>{chatFound.name}</strong> on Telegram.</>
+              )}
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 24 }}>
+              Your bots will send results directly to your Telegram.
+            </p>
+            <button onClick={() => { setStep(0); setToken(''); setChatFound(null); setError(null); }}
+              className="btn-secondary" style={{ padding: '10px 20px' }}>
+              Done
+            </button>
+          </div>
+        )}
+
+        {/* Back button for steps 1-3 */}
+        {step > 0 && step < 4 && (
+          <button onClick={() => { setStep(step - 1); setError(null); }}
+            style={{
+              marginTop: 12, background: 'none', border: 'none',
+              cursor: 'pointer', fontSize: 13, color: 'var(--text-tertiary)',
+            }}>
+            ← Back
+          </button>
+        )}
+      </div>
     </div>
   );
 }
