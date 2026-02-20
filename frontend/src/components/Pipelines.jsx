@@ -19,7 +19,7 @@ export default function Pipelines({ bots, onBack }) {
       </div>
 
       {pipelines.length === 0 ? (
-        <div className="glass-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
           <p style={{ fontSize: 40, marginBottom: 12 }}>🔗</p>
           <p style={{ fontSize: 15, fontWeight: 500 }}>Noch keine Pipelines</p>
           <p style={{ fontSize: 13, marginTop: 4 }}>Verbinde Bots zu automatischen Workflows</p>
@@ -50,7 +50,7 @@ function PipelineCard({ pipeline, bots, onRefresh }) {
   const s = statusColors[pipeline.last_status] || { bg: 'rgba(142,142,147,0.1)', color: '#636366', label: 'Bereit' };
 
   return (
-    <div className="glass-card" style={{ padding: 20 }}>
+    <div className="card" style={{ padding: 20 }}>
       <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 600 }}>{pipeline.name}</h3>
@@ -124,11 +124,11 @@ function CreatePipelineModal({ bots, onClose, onCreate }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)',
+      position: 'fixed', inset: 0, background: 'var(--overlay)',
       backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 50, padding: 16,
     }} onClick={onClose}>
-      <div className="glass-card animate-in" style={{ width: '100%', maxWidth: 520, padding: 28, maxHeight: '90vh', overflowY: 'auto' }}
+      <div className="card animate-in" style={{ width: '100%', maxWidth: 520, padding: 28, maxHeight: '90vh', overflowY: 'auto' }}
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 700 }}>Neue Pipeline</h2>

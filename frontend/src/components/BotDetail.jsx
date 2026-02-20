@@ -18,7 +18,6 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
   };
 
   useEffect(() => { load(); }, [botId]);
-
   useEffect(() => {
     const ws = connectWs(botId, (msg) => {
       if (msg.type === 'log') setLogs(prev => [...prev, msg.line]);
@@ -26,16 +25,9 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
     });
     return () => ws.close();
   }, [botId]);
+  useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [logs]);
 
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [logs]);
-
-  if (!bot) return (
-    <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-tertiary)' }}>
-      <div style={{ fontSize: 14 }}>Lade...</div>
-    </div>
-  );
+  if (!bot) return <div className="empty-state"><div className="empty-title">Lade...</div></div>;
 
   const stats = {
     runs: runs.length,
@@ -45,10 +37,10 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
   };
 
   const tabs = [
-    { key: 'results', label: 'Ergebnisse', icon: '📋' },
-    { key: 'runs', label: 'Läufe', icon: '🔄' },
-    { key: 'docs', label: 'Dokumente', icon: '📄' },
-    { key: 'log', label: 'Live-Log', icon: '📊' },
+    { key: 'results', label: '📋 Ergebnisse' },
+    { key: 'runs', label: '🔄 Läufe' },
+    { key: 'docs', label: '📄 Dokumente' },
+    { key: 'log', label: '📊 Live-Log' },
   ];
 
   return (
@@ -56,91 +48,62 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
+          <button onClick={onBack} className="btn-ghost" style={{ fontSize: 16 }}>←</button>
           <div style={{
-            width: 56, height: 56, borderRadius: 16, background: 'white',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 28, boxShadow: 'var(--glass-shadow)', border: '1px solid var(--border)',
+            width: 52, height: 52, borderRadius: 14, background: 'var(--bg-tertiary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
+            boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)',
           }}>{bot.emoji}</div>
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>{bot.name}</h2>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 2 }}>{bot.description || bot.prompt}</p>
+            <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>{bot.name}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{bot.description || bot.prompt}</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={async () => { setLogs([]); await api.runBot(botId); load(); }} className="btn-primary">
-            ▶ Jetzt starten
-          </button>
-          {onEdit && (
-            <button onClick={() => onEdit(bot)} className="btn-secondary" style={{ padding: '8px 14px' }}>
-              ✏️ Bearbeiten
-            </button>
-          )}
+          <button onClick={async () => { setLogs([]); await api.runBot(botId); load(); }} className="btn-primary">▶ Starten</button>
+          {onEdit && <button onClick={() => onEdit(bot)} className="btn-secondary">✏️ Bearbeiten</button>}
           <button onClick={async () => {
             const data = await api.exportBot(botId);
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = `${bot.name}.json`; a.click();
-          }} className="btn-secondary" style={{ padding: '8px 14px' }} title="Bot exportieren">
-            📥
-          </button>
-          <a href={api.exportCsv(botId)} className="btn-secondary"
-            style={{ padding: '8px 14px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }} title="CSV exportieren">
-            📊
-          </a>
+            Object.assign(document.createElement('a'), { href: url, download: `${bot.name}.json` }).click();
+          }} className="btn-ghost" title="Bot exportieren">📥</button>
+          <a href={api.exportCsv(botId)} className="btn-ghost" title="CSV exportieren" style={{ textDecoration: 'none' }}>📊</a>
           <button onClick={async () => { if(confirm('Bot löschen?')) { await api.deleteBot(botId); onRefresh(); onBack(); }}}
-            style={{
-              background: 'rgba(255, 59, 48, 0.08)', color: '#FF3B30',
-              border: '1px solid rgba(255, 59, 48, 0.15)', borderRadius: 12,
-              padding: '8px 14px', fontSize: 14, cursor: 'pointer',
-              transition: 'background 0.15s ease',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.15)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.08)'}
-          >🗑️</button>
+            className="btn-ghost" style={{ color: 'var(--danger)' }}>🗑️</button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-4 gap-3">
         {[
           { label: 'Läufe', value: stats.runs, color: 'var(--accent)' },
-          { label: 'Ergebnisse', value: stats.results, color: '#5856D6' },
-          { label: 'Intervall', value: bot.schedule || 'Manuell', color: '#FF9500' },
-          { label: 'Erfolgsrate', value: `${stats.rate}%`, color: '#34C759' },
+          { label: 'Ergebnisse', value: stats.results, color: 'var(--purple)' },
+          { label: 'Intervall', value: bot.schedule || 'Manuell', color: 'var(--warning)' },
+          { label: 'Erfolgsrate', value: `${stats.rate}%`, color: 'var(--success)' },
         ].map(s => (
-          <div key={s.label} className="glass-card" style={{ padding: 20, textAlign: 'center' }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: s.color, letterSpacing: '-0.02em' }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, fontWeight: 500 }}>{s.label}</div>
+          <div key={s.label} className="stat-card">
+            <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
+            <div className="stat-label">{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Tabs — Apple segmented control style */}
-      <div style={{
-        display: 'inline-flex', background: 'rgba(0,0,0,0.04)',
-        borderRadius: 12, padding: 3, gap: 2,
-      }}>
+      {/* Tabs */}
+      <div className="segmented-control">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '7px 16px', borderRadius: 10, fontSize: 13, fontWeight: 500, border: 'none', cursor: 'pointer',
-            background: tab === t.key ? 'white' : 'transparent',
-            color: tab === t.key ? 'var(--text-primary)' : 'var(--text-secondary)',
-            boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-            transition: 'all 0.2s ease',
-          }}>
-            {t.icon} {t.label}
+          <button key={t.key} data-active={tab === t.key} onClick={() => setTab(t.key)}>
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
+      {/* Content */}
       <div className="animate-in">
         {tab === 'results' && (
-          <div className="glass-card divide-y" style={{ borderColor: 'var(--divider)' }}>
+          <div className="card divide-styled">
             {results.length === 0 ? (
-              <p style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
-                Noch keine Ergebnisse.
-              </p>
+              <div className="empty-state"><p className="empty-title">Noch keine Ergebnisse.</p></div>
             ) : results.map(r => (
               <div key={r.id} style={{ padding: 20 }}>
                 <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
@@ -149,26 +112,21 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
                     {r.created_at ? new Date(r.created_at).toLocaleString('de-DE') : ''}
                   </span>
                 </div>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                  {r.content}
-                </p>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{r.content}</p>
               </div>
             ))}
           </div>
         )}
 
         {tab === 'runs' && (
-          <div className="glass-card divide-y" style={{ borderColor: 'var(--divider)' }}>
+          <div className="card divide-styled">
             {runs.length === 0 ? (
-              <p style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
-                Noch keine Läufe.
-              </p>
+              <div className="empty-state"><p className="empty-title">Noch keine Läufe.</p></div>
             ) : runs.map(r => (
-              <div key={r.id} className="flex items-center gap-4" style={{ padding: '14px 20px', fontSize: 14 }}>
+              <div key={r.id} className="flex items-center gap-4" style={{ padding: '12px 20px', fontSize: 14 }}>
                 <span style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: r.status === 'completed' ? '#34C759' : r.status === 'failed' ? '#FF3B30' : '#FF9500',
-                  flexShrink: 0,
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: r.status === 'completed' ? 'var(--success)' : r.status === 'failed' ? 'var(--danger)' : 'var(--warning)',
                 }} className={r.status === 'running' ? 'pulse-dot' : ''} />
                 <span style={{ width: 80, color: 'var(--text-secondary)', fontWeight: 500 }}>{r.status}</span>
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{r.trigger}</span>
@@ -176,38 +134,27 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
                   {r.started_at ? new Date(r.started_at).toLocaleString('de-DE') : ''}
                 </span>
-                {r.duration_ms != null && (
-                  <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{(r.duration_ms / 1000).toFixed(1)}s</span>
-                )}
+                {r.duration_ms != null && <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{(r.duration_ms / 1000).toFixed(1)}s</span>}
               </div>
             ))}
           </div>
         )}
 
         {tab === 'docs' && (
-          <div className="glass-card" style={{ padding: 20 }}>
+          <div className="card" style={{ padding: 20 }}>
             {docs.length === 0 ? (
               <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>Keine Dokumente.</p>
             ) : docs.map(d => (
-              <div key={d.name} className="flex items-center gap-2" style={{ padding: '6px 0', fontSize: 14, color: 'var(--text-secondary)' }}>
-                📄 {d.name}
-              </div>
+              <div key={d.name} className="flex items-center gap-2" style={{ padding: '6px 0', fontSize: 14, color: 'var(--text-secondary)' }}>📄 {d.name}</div>
             ))}
           </div>
         )}
 
         {tab === 'log' && (
-          <div ref={logRef} style={{
-            background: '#1C1C1E', borderRadius: 16, padding: 20,
-            fontFamily: 'SF Mono, Menlo, monospace', fontSize: 12,
-            color: '#98989D', height: 320, overflowY: 'auto',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}>
+          <div ref={logRef} className="log-output" style={{ height: 320 }}>
             {logs.length === 0 ? (
-              <p style={{ color: '#48484A' }}>Starte einen Bot-Run um Live-Logs zu sehen...</p>
-            ) : logs.map((line, i) => (
-              <div key={i} style={{ padding: '2px 0' }}>{line}</div>
-            ))}
+              <p style={{ color: 'var(--text-quaternary)' }}>Starte einen Bot-Run um Live-Logs zu sehen...</p>
+            ) : logs.map((line, i) => <div key={i} style={{ padding: '1px 0' }}>{line}</div>)}
           </div>
         )}
       </div>

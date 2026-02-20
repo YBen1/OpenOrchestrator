@@ -134,21 +134,9 @@ export default function Settings({ onBack }) {
         <button onClick={onBack} className="btn-secondary" style={{ fontSize: 13 }}>← Dashboard</button>
       </div>
 
-      {/* Tabs */}
-      <div style={{
-        display: 'inline-flex', background: 'rgba(0,0,0,0.04)',
-        borderRadius: 12, padding: 3, gap: 2,
-      }}>
+      <div className="segmented-control">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '7px 16px', borderRadius: 10, fontSize: 13, fontWeight: 500, border: 'none', cursor: 'pointer',
-            background: tab === t.key ? 'white' : 'transparent',
-            color: tab === t.key ? 'var(--text-primary)' : 'var(--text-secondary)',
-            boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-            transition: 'all 0.2s ease',
-          }}>
-            {t.label}
-          </button>
+          <button key={t.key} data-active={tab === t.key} onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
       </div>
 
@@ -164,7 +152,7 @@ export default function Settings({ onBack }) {
             const result = testResult[p.id];
 
             return (
-              <div key={p.id} className="glass-card" style={{ overflow: 'hidden' }}>
+              <div key={p.id} className="card" style={{ overflow: 'hidden' }}>
                 <div
                   className="flex items-center gap-4 cursor-pointer"
                   style={{ padding: '16px 20px' }}
@@ -277,7 +265,7 @@ export default function Settings({ onBack }) {
 
           {/* Existing channels */}
           {channels.length > 0 && (
-            <div className="glass-card divide-y" style={{ borderColor: 'var(--divider)' }}>
+            <div className="card divide-y" style={{ borderColor: 'var(--divider)' }}>
               {channels.map(ch => (
                 <div key={ch.id} className="flex items-center gap-4" style={{ padding: '14px 20px' }}>
                   <span style={{ fontSize: 22 }}>{ch.type === 'telegram' ? '📱' : ch.type === 'webhook' ? '🪝' : '📧'}</span>
@@ -304,7 +292,7 @@ export default function Settings({ onBack }) {
           )}
 
           {/* Add Telegram */}
-          <div className="glass-card" style={{ padding: 20 }}>
+          <div className="card" style={{ padding: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>📱 Telegram hinzufügen</h3>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.6 }}>
               1. Schreibe{' '}
@@ -339,7 +327,7 @@ export default function Settings({ onBack }) {
           </div>
 
           {/* Add Webhook */}
-          <div className="glass-card" style={{ padding: 20 }}>
+          <div className="card" style={{ padding: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>🪝 Webhook hinzufügen</h3>
             <div className="flex gap-2">
               <input className="input-apple" placeholder="https://example.com/webhook" value={webhookUrl}
@@ -355,23 +343,22 @@ export default function Settings({ onBack }) {
 
       {tab === 'usage' && usage && (
         <div className="space-y-6">
-          {/* Totals */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-3">
             {[
               { label: 'Runs gesamt', value: usage.total.runs, color: 'var(--accent)' },
-              { label: 'Tokens rein', value: usage.total.tokens_in?.toLocaleString('de-DE') || '0', color: '#5856D6' },
-              { label: 'Tokens raus', value: usage.total.tokens_out?.toLocaleString('de-DE') || '0', color: '#FF9500' },
-              { label: 'Kosten', value: `$${usage.total.cost?.toFixed(2) || '0.00'}`, color: '#34C759' },
+              { label: 'Tokens rein', value: usage.total.tokens_in?.toLocaleString('de-DE') || '0', color: 'var(--purple)' },
+              { label: 'Tokens raus', value: usage.total.tokens_out?.toLocaleString('de-DE') || '0', color: 'var(--warning)' },
+              { label: 'Kosten', value: `$${usage.total.cost?.toFixed(2) || '0.00'}`, color: 'var(--success)' },
             ].map(s => (
-              <div key={s.label} className="glass-card" style={{ padding: 20, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{s.label}</div>
+              <div key={s.label} className="stat-card">
+                <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
+                <div className="stat-label">{s.label}</div>
               </div>
             ))}
           </div>
 
           {/* Per bot */}
-          <div className="glass-card divide-y" style={{ borderColor: 'var(--divider)' }}>
+          <div className="card divide-y" style={{ borderColor: 'var(--divider)' }}>
             <div style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
               Pro Bot
             </div>
@@ -405,14 +392,14 @@ export default function Settings({ onBack }) {
               { label: 'Bots', value: system.bots, color: '#5856D6' },
               { label: 'Runs', value: system.runs, color: '#FF9500' },
             ].map(s => (
-              <div key={s.label} className="glass-card" style={{ padding: 20, textAlign: 'center' }}>
+              <div key={s.label} className="card" style={{ padding: 20, textAlign: 'center' }}>
                 <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{s.label}</div>
               </div>
             ))}
           </div>
 
-          <div className="glass-card" style={{ padding: 20 }}>
+          <div className="card" style={{ padding: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>System-Status</h3>
             <div className="space-y-3" style={{ fontSize: 14 }}>
               <div className="flex justify-between">
@@ -440,7 +427,7 @@ export default function Settings({ onBack }) {
             </div>
           </div>
 
-          <div className="glass-card" style={{ padding: 20 }}>
+          <div className="card" style={{ padding: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Tastatur-Kürzel</h3>
             <div className="space-y-2" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               {[

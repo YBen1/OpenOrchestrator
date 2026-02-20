@@ -25,12 +25,12 @@ export default function TemplateGallery({ onClose, onCreate }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)',
+      position: 'fixed', inset: 0, background: 'var(--overlay)',
       backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 50, padding: 16,
     }} onClick={onClose}>
-      <div className="glass-card animate-in" style={{
+      <div className="card animate-in" style={{
         width: '100%', maxWidth: 680, padding: 28, maxHeight: '85vh', overflowY: 'auto',
       }} onClick={e => e.stopPropagation()}>
 

@@ -34,7 +34,7 @@ export default function Onboarding({ onComplete }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'var(--bg)',
+      position: 'fixed', inset: 0, background: 'var(--bg-primary)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 100,
     }}>
@@ -68,7 +68,7 @@ export default function Onboarding({ onComplete }) {
             <div className="space-y-3" style={{ marginBottom: 24 }}>
               {PROVIDERS.map(p => (
                 <div key={p.id} onClick={() => { setProvider(p); setResult(null); }}
-                  className="glass-card cursor-pointer hover-lift"
+                  className="card cursor-pointer hover-lift"
                   style={{
                     padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
                     border: provider?.id === p.id ? '2px solid var(--accent)' : '1px solid var(--border)',
