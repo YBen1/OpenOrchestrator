@@ -275,6 +275,74 @@ Der Wizard soll sich anfühlen wie ein Gespräch, nicht wie ein Formular.
 
 ---
 
+---
+
+## 5. Credentials Vault (Per-Bot API Keys & Zugänge)
+
+**Problem:** Aktuell sind API-Keys global — jeder Bot nutzt denselben OpenAI-Key. Aber manche Bots brauchen spezifische Zugänge (eBay API, Gmail, Shopify, eigener Brave-Key), und nicht jeder Bot soll auf alles zugreifen können.
+
+**Lösung: Credentials als eigenes Konzept**
+
+### Datenmodell:
+```
+Credential {
+  id, name, type, value (encrypted), shared (bool), created_at
+}
+
+BotCredential {
+  bot_id, credential_id
+}
+```
+
+### Credential-Typen:
+- `api_key` — Generischer API-Key (Header: Authorization / X-API-Key)
+- `oauth2` — OAuth2 Token (Gmail, Shopify, etc.)
+- `bearer` — Bearer Token
+- `custom` — Key-Value Pairs (für beliebige Services)
+
+### UX:
+1. **Credentials Vault** in Settings (neben API Keys, Channels, Usage)
+   - Liste aller gespeicherten Credentials
+   - "Add Credential" → Name, Typ, Wert (verschlüsselt gespeichert)
+   - Shared-Toggle: Alle Bots oder nur zugewiesene
+2. **Bot Edit** → neues Feld "Credentials"
+   - Multi-Select aus vorhandenen Credentials
+   - Bot kann nur auf zugewiesene Credentials zugreifen
+3. **Bot Runtime** — Credentials als Environment-Variablen oder Tool-Config injected
+
+### Sicherheit:
+- Werte mit Fernet (symmetric) verschlüsselt in SQLite
+- Master-Key aus OS Keychain oder Env-Variable
+- Credentials nie im Klartext in Logs oder API-Responses
+- "Reveal" Button mit Bestätigung zum Anzeigen
+
+### Beispiel-Flow:
+1. User geht zu Settings → Credentials → "Add"
+2. Name: "eBay API", Type: API Key, Value: "abc123..."
+3. User erstellt eBay-Scout Bot → Credentials: [eBay API, Brave Search]
+4. Bot läuft → hat Zugriff auf eBay API + Brave, aber NICHT auf Gmail-Credential
+
+---
+
+## 6. Bot-Fenster als zentrale Ausgabe
+
+**Prinzip:** Jeder Bot hat ein eigenes "Fenster" in der App wo IMMER alle Ergebnisse landen. Channels (Telegram, Webhook) sind zusätzliche Ausgabekanäle.
+
+### Bot Detail View soll zeigen:
+- **Live-Output** während der Bot läuft (Streaming)
+- **Ergebnis-Historie** aller vergangenen Runs
+- **Status:** Running / Idle / Error mit Timestamps
+- **Quick Actions:** Run, Pause Schedule, Edit, Delete
+- **Output-Kanäle:** Welche Channels bekommen Ergebnisse (Toggle pro Channel)
+
+### UX-Verbesserung:
+- Bot-Fenster öffnet sich per Klick auf Bot-Card
+- Split-View möglich: Bot-Liste links, Output rechts
+- Notification-Badge auf Bot-Card wenn neues Ergebnis da ist
+- "Pin" Option um Bot-Fenster immer sichtbar zu halten
+
+---
+
 ### Offene Fragen:
 - [ ] Firma gründen? (UG für Rechnungsstellung)
 - [ ] Payment Provider: Stripe? Paddle? (Paddle = einfacher für EU/Steuern)
