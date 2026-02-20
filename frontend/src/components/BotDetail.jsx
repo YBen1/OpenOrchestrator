@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Play, Pencil, Download, BarChart3, Trash2, RefreshCw, FileText, Copy } from 'lucide-react';
 import { api, connectWs } from '../api';
 
 export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
@@ -37,18 +38,19 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
   };
 
   const tabs = [
-    { key: 'results', label: '📋 Results' },
-    { key: 'runs', label: '🔄 Runs' },
-    { key: 'docs', label: '📄 Documents' },
-    { key: 'log', label: '📊 Live Log' },
+    { key: 'results', label: 'Results', icon: <Copy size={15} strokeWidth={1.5} /> },
+    { key: 'runs', label: 'Runs', icon: <RefreshCw size={15} strokeWidth={1.5} /> },
+    { key: 'docs', label: 'Documents', icon: <FileText size={15} strokeWidth={1.5} /> },
+    { key: 'log', label: 'Live Log', icon: <BarChart3 size={15} strokeWidth={1.5} /> },
   ];
 
   return (
     <div className="space-y-8 animate-in">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="btn-ghost" style={{ fontSize: 16 }}>←</button>
+          <button onClick={onBack} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
+            <ArrowLeft size={18} strokeWidth={1.5} />
+          </button>
           <div style={{
             width: 52, height: 52, borderRadius: 14, background: 'var(--bg-tertiary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
@@ -60,21 +62,30 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={async () => { setLogs([]); await api.runBot(botId); load(); }} className="btn-primary">▶ Run</button>
-          {onEdit && <button onClick={() => onEdit(bot)} className="btn-secondary">✏️ Edit</button>}
+          <button onClick={async () => { setLogs([]); await api.runBot(botId); load(); }} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Play size={12} fill="white" strokeWidth={0} /> Run
+          </button>
+          {onEdit && <button onClick={() => onEdit(bot)} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Pencil size={14} strokeWidth={1.5} /> Edit
+          </button>}
           <button onClick={async () => {
             const data = await api.exportBot(botId);
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             Object.assign(document.createElement('a'), { href: url, download: `${bot.name}.json` }).click();
-          }} className="btn-ghost" title="Export bot">📥</button>
-          <a href={api.exportCsv(botId)} className="btn-ghost" title="Export CSV" style={{ textDecoration: 'none' }}>📊</a>
+          }} className="btn-ghost" title="Export bot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
+            <Download size={16} strokeWidth={1.5} />
+          </button>
+          <a href={api.exportCsv(botId)} className="btn-ghost" title="Export CSV" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
+            <BarChart3 size={16} strokeWidth={1.5} />
+          </a>
           <button onClick={async () => { if(confirm('Delete bot?')) { await api.deleteBot(botId); onRefresh(); onBack(); }}}
-            className="btn-ghost" style={{ color: 'var(--danger)' }}>🗑️</button>
+            className="btn-ghost" style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
+            <Trash2 size={16} strokeWidth={1.5} />
+          </button>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         {[
           { label: 'Runs', value: stats.runs, color: 'var(--accent)' },
@@ -89,16 +100,14 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
         ))}
       </div>
 
-      {/* Tabs */}
       <div className="segmented-control">
         {tabs.map(t => (
-          <button key={t.key} data-active={tab === t.key} onClick={() => setTab(t.key)}>
-            {t.label}
+          <button key={t.key} data-active={tab === t.key} onClick={() => setTab(t.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {t.icon} {t.label}
           </button>
         ))}
       </div>
 
-      {/* Content */}
       <div className="animate-in">
         {tab === 'results' && (
           <div className="card divide-styled">
@@ -145,7 +154,9 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
             {docs.length === 0 ? (
               <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>No documents.</p>
             ) : docs.map(d => (
-              <div key={d.name} className="flex items-center gap-2" style={{ padding: '6px 0', fontSize: 14, color: 'var(--text-secondary)' }}>📄 {d.name}</div>
+              <div key={d.name} className="flex items-center gap-2" style={{ padding: '6px 0', fontSize: 14, color: 'var(--text-secondary)' }}>
+                <FileText size={14} strokeWidth={1.5} /> {d.name}
+              </div>
             ))}
           </div>
         )}

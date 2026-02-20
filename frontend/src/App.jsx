@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Zap, Search, Link, Settings as SettingsIcon, Moon, Sun } from 'lucide-react';
 import { api } from './api';
 import Dashboard from './components/Dashboard';
 import BotDetail from './components/BotDetail';
@@ -56,20 +57,18 @@ export default function App() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
-      {/* ─── Header ─── */}
+      {/* Header */}
       <header className="header-bar" style={{ padding: '0 24px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', minWidth: 200 }} onClick={() => nav('dashboard')}>
           <div style={{
             width: 30, height: 30, borderRadius: 8,
             background: 'linear-gradient(135deg, #007AFF 0%, #5856D6 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontSize: 14, fontWeight: 700,
-          }}>⚡</div>
+            color: 'white',
+          }}><Zap size={16} strokeWidth={2} /></div>
           <span style={{ fontSize: 15, fontWeight: 650, letterSpacing: '-0.02em' }}>openOrchestrator</span>
         </div>
 
-        {/* Center — search */}
         <button onClick={() => setShowSearch(true)} style={{
           height: 32, borderRadius: 8, padding: '0 14px',
           background: 'var(--bg-tertiary)', border: '1px solid var(--border)',
@@ -80,23 +79,23 @@ export default function App() {
           onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.4, flexShrink: 0 }}>
-            <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
+          <Search size={14} strokeWidth={1.5} style={{ opacity: 0.4, flexShrink: 0 }} />
           <span>Search...</span>
           <kbd style={{ fontSize: 10, marginLeft: 'auto', opacity: 0.35, fontFamily: 'inherit' }}>⌘K</kbd>
         </button>
 
-        {/* Right — nav */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 200, justifyContent: 'flex-end' }}>
           <button className="icon-btn" data-active={view.page === 'pipelines'} onClick={() => nav('pipelines')} title="Pipelines"
-            style={{ width: 34, height: 34, borderRadius: 8, fontSize: 16 }}>🔗</button>
+            style={{ width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Link size={18} strokeWidth={1.5} />
+          </button>
           <button className="icon-btn" data-active={view.page === 'settings'} onClick={() => nav('settings')} title="Settings"
-            style={{ width: 34, height: 34, borderRadius: 8, fontSize: 16 }}>⚙️</button>
+            style={{ width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <SettingsIcon size={18} strokeWidth={1.5} />
+          </button>
           <button className="icon-btn" onClick={() => setDarkMode(!darkMode)} title={darkMode ? 'Light Mode' : 'Dark Mode'}
-            style={{ width: 34, height: 34, borderRadius: 8, fontSize: 16 }}>
-            {darkMode ? '☀️' : '🌙'}
+            style={{ width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {darkMode ? <Sun size={18} strokeWidth={1.5} /> : <Moon size={18} strokeWidth={1.5} />}
           </button>
           <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 6px' }} />
           <button onClick={() => setShowTemplates(true)} style={{
@@ -115,7 +114,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* ─── No key banner ─── */}
+      {/* No key banner */}
       {!hasKeys && view.page === 'dashboard' && (
         <div className="animate-in" style={{ maxWidth: '72rem', margin: '12px auto 0', padding: '0 24px' }}>
           <div style={{
@@ -144,7 +143,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ─── Content ─── */}
       <main className="max-w-6xl mx-auto px-6 py-6">
         {view.page === 'dashboard' ? (
           <Dashboard bots={bots} activity={activity} triggers={triggers}
@@ -162,7 +160,6 @@ export default function App() {
         )}
       </main>
 
-      {/* ─── Modals ─── */}
       {showOnboarding && (
         <Onboarding onComplete={() => { setShowOnboarding(false); localStorage.setItem('onboarded', '1'); checkKeys(); }} />
       )}

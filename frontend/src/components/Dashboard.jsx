@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import { Bot, Loader2, XCircle } from 'lucide-react';
 import BotCard from './BotCard';
 
 export default function Dashboard({ bots, activity, triggers, onSelect, onRun, onEdit, onRefresh }) {
   return (
     <div style={{ paddingTop: 8 }}>
-      {/* Hero greeting */}
       <div style={{ marginBottom: 40 }}>
         <h1 style={{
           fontSize: 34, fontWeight: 700, letterSpacing: '-0.03em',
@@ -19,12 +19,11 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         </p>
       </div>
 
-      {/* Bots */}
       <section style={{ marginBottom: 48 }}>
         <SectionHeader title="My Bots" count={bots.length} />
         {bots.length === 0 ? (
           <div className="card empty-state">
-            <p className="empty-icon">🤖</p>
+            <p className="empty-icon" style={{ display: 'flex', justifyContent: 'center' }}><Bot size={40} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} /></p>
             <p className="empty-title">No bots created yet</p>
             <p className="empty-desc">Click "+ New Bot" or choose a template</p>
           </div>
@@ -41,7 +40,6 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         )}
       </section>
 
-      {/* Triggers */}
       {triggers.length > 0 && (
         <section style={{ marginBottom: 48 }}>
           <SectionHeader title="Connections" count={triggers.length} />
@@ -78,7 +76,6 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         </section>
       )}
 
-      {/* Activity */}
       <ActivityFeed activity={activity} onSelect={onSelect} />
     </div>
   );
@@ -117,7 +114,7 @@ function Chip({ emoji, label }) {
       display: 'inline-flex', alignItems: 'center', gap: 6,
       fontSize: 13, fontWeight: 500, color: 'var(--text-primary)',
     }}>
-      <span style={{ fontSize: 14 }}>{emoji || '🤖'}</span>{label}
+      <span style={{ fontSize: 14 }}>{emoji || <Bot size={14} strokeWidth={1.5} />}</span>{label}
     </span>
   );
 }
@@ -154,7 +151,6 @@ function ActivityFeed({ activity, onSelect }) {
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 onClick={() => setExpanded(isOpen ? null : a.id)}
               >
-                {/* Time */}
                 <span style={{
                   width: 44, color: 'var(--text-tertiary)', fontSize: 13,
                   fontVariantNumeric: 'tabular-nums', flexShrink: 0,
@@ -162,7 +158,6 @@ function ActivityFeed({ activity, onSelect }) {
                   {a.started_at ? new Date(a.started_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
                 </span>
 
-                {/* Bot avatar */}
                 <span style={{
                   width: 30, height: 30, borderRadius: 9,
                   background: 'var(--bg-tertiary)',
@@ -170,7 +165,6 @@ function ActivityFeed({ activity, onSelect }) {
                   fontSize: 15, flexShrink: 0,
                 }}>{a.bot_emoji}</span>
 
-                {/* Bot name */}
                 <span
                   style={{
                     fontWeight: 600, fontSize: 13, width: 100, flexShrink: 0,
@@ -182,7 +176,6 @@ function ActivityFeed({ activity, onSelect }) {
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-primary)'}
                 >{a.bot_name}</span>
 
-                {/* Output preview */}
                 <span style={{
                   color: 'var(--text-secondary)', flex: 1, overflow: 'hidden',
                   textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13,
@@ -190,7 +183,6 @@ function ActivityFeed({ activity, onSelect }) {
                   {a.output_preview || '—'}
                 </span>
 
-                {/* Status */}
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   fontSize: 12, fontWeight: 600, color: s.color, flexShrink: 0,
@@ -202,7 +194,6 @@ function ActivityFeed({ activity, onSelect }) {
                   {s.label}
                 </span>
 
-                {/* Chevron */}
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
                   style={{ flexShrink: 0, transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'none' }}>
                   <path d="M3 4.5l3 3 3-3" stroke="var(--text-quaternary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -213,9 +204,9 @@ function ActivityFeed({ activity, onSelect }) {
                 <div className="animate-in" style={{ padding: '4px 20px 16px 88px' }}>
                   <div className="log-output" style={{ maxHeight: 256 }}>
                     {a.output || a.output_preview || (
-                      <span style={{ fontStyle: 'italic', color: 'var(--text-tertiary)' }}>
-                        {a.status === 'running' ? '⏳ Bot is still running...' :
-                         a.status === 'failed' ? '❌ Run failed.' :
+                      <span style={{ fontStyle: 'italic', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {a.status === 'running' ? <><Loader2 size={14} className="animate-spin" /> Bot is still running...</> :
+                         a.status === 'failed' ? <><XCircle size={14} /> Run failed.</> :
                          'No result.'}
                       </span>
                     )}

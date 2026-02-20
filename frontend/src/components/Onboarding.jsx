@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { api } from '../api';
 
 const PROVIDERS = [
-  { id: 'openai', name: 'OpenAI', emoji: '✨', key: 'openai_api_key', placeholder: 'sk-...',
+  { id: 'openai', name: 'OpenAI', logo: '/logos/openai.svg', key: 'openai_api_key', placeholder: 'sk-...',
     url: 'https://platform.openai.com/api-keys', desc: 'GPT-5, GPT-4.1' },
-  { id: 'anthropic', name: 'Anthropic', emoji: '🟣', key: 'anthropic_api_key', placeholder: 'sk-ant-...',
+  { id: 'anthropic', name: 'Anthropic', logo: '/logos/anthropic.svg', key: 'anthropic_api_key', placeholder: 'sk-ant-...',
     url: 'https://console.anthropic.com/settings/keys', desc: 'Claude Sonnet, Opus' },
-  { id: 'google', name: 'Google', emoji: '🔵', key: 'google_api_key', placeholder: 'AIza...',
-    url: 'https://aistudio.google.com/apikey', desc: 'Gemini — Gratis-Tier!' },
+  { id: 'google', name: 'Google', logo: '/logos/google.svg', key: 'google_api_key', placeholder: 'AIza...',
+    url: 'https://aistudio.google.com/apikey', desc: 'Gemini — Free tier!' },
 ];
 
 export default function Onboarding({ onComplete }) {
@@ -73,7 +73,12 @@ export default function Onboarding({ onComplete }) {
                     padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
                     border: provider?.id === p.id ? '2px solid var(--accent)' : '1px solid var(--border)',
                   }}>
-                  <span style={{ fontSize: 28 }}>{p.emoji}</span>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, background: 'var(--bg-tertiary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <img src={p.logo} alt={p.name} style={{ width: 24, height: 24 }} />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{p.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{p.desc}</div>

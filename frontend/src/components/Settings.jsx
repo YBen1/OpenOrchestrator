@@ -3,23 +3,23 @@ import { api } from '../api';
 
 const PROVIDERS = [
   {
-    id: 'openai', name: 'OpenAI', emoji: '✨', key: 'openai_api_key',
+    id: 'openai', name: 'OpenAI', logo: '/logos/openai.svg', logoColor: '#10a37f', key: 'openai_api_key',
     models: 'GPT-5, GPT-4.1, o4-mini',
-    cost: 'ab ~$5/Mo',
+    cost: '~$5/mo',
     signupUrl: 'https://platform.openai.com/signup',
     keyUrl: 'https://platform.openai.com/api-keys',
     placeholder: 'sk-...',
   },
   {
-    id: 'anthropic', name: 'Anthropic', emoji: '🟣', key: 'anthropic_api_key',
+    id: 'anthropic', name: 'Anthropic', logo: '/logos/anthropic.svg', logoColor: '#D4A27F', key: 'anthropic_api_key',
     models: 'Claude Sonnet, Haiku, Opus',
-    cost: 'ab ~$5/Mo',
+    cost: '~$5/mo',
     signupUrl: 'https://console.anthropic.com',
     keyUrl: 'https://console.anthropic.com/settings/keys',
     placeholder: 'sk-ant-...',
   },
   {
-    id: 'google', name: 'Google Gemini', emoji: '🔵', key: 'google_api_key',
+    id: 'google', name: 'Google Gemini', logo: '/logos/google.svg', logoColor: '#4285f4', key: 'google_api_key',
     models: 'Gemini 2.5 Pro, 2.0 Flash',
     cost: 'Free tier available',
     signupUrl: 'https://aistudio.google.com',
@@ -27,31 +27,46 @@ const PROVIDERS = [
     placeholder: 'AIza...',
   },
   {
-    id: 'mistral', name: 'Mistral', emoji: '🟠', key: 'mistral_api_key',
+    id: 'mistral', name: 'Mistral', logo: '/logos/mistral.svg', logoColor: '#f97316', key: 'mistral_api_key',
     models: 'Mistral Large, Small',
-    cost: 'ab ~$2/Mo',
+    cost: '~$2/mo',
     signupUrl: 'https://console.mistral.ai',
     keyUrl: 'https://console.mistral.ai/api-keys',
     placeholder: '...',
   },
   {
-    id: 'brave', name: 'Brave Search', emoji: '🔍', key: 'brave_api_key',
+    id: 'brave', name: 'Brave Search', logo: '/logos/brave.svg', logoColor: '#fb542b', key: 'brave_api_key',
     models: 'Web search for bots',
-    cost: '2000 searches/mo free',
+    cost: '2,000 searches/mo free',
     signupUrl: 'https://brave.com/search/api/',
     keyUrl: 'https://api.search.brave.com/app/keys',
     placeholder: 'BSA...',
   },
   {
-    id: 'ollama', name: 'Lokal (Ollama)', emoji: '🏠', key: 'ollama_base_url',
-    models: 'Llama, Mistral, Phi local',
-    cost: 'Costlos',
+    id: 'ollama', name: 'Ollama (Local)', logo: '/logos/ollama.svg', logoColor: '#1C1C1E', key: 'ollama_base_url',
+    models: 'Llama, Mistral, Phi — runs locally',
+    cost: 'Free',
     signupUrl: 'https://ollama.com/download',
     keyUrl: null,
     placeholder: 'http://localhost:11434',
     isUrl: true,
   },
 ];
+
+function ProviderLogo({ provider, size = 28 }) {
+  return (
+    <div style={{
+      width: size + 8, height: size + 8, borderRadius: 10,
+      background: 'var(--bg-tertiary)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+    }}>
+      <img src={provider.logo} alt={provider.name} style={{
+        width: size, height: size, color: provider.logoColor,
+      }} />
+    </div>
+  );
+}
 
 export default function Settings({ onBack }) {
   const [settings, setSettings] = useState({});
@@ -160,7 +175,7 @@ export default function Settings({ onBack }) {
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.01)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <span style={{ fontSize: 28 }}>{p.emoji}</span>
+                  <ProviderLogo provider={p} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{p.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{p.models}</div>

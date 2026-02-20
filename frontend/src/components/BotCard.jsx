@@ -1,3 +1,4 @@
+import { Play, Pencil, Copy } from 'lucide-react';
 import { api } from '../api';
 
 const SCHEDULE_LABELS = {
@@ -41,7 +42,6 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
         e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
       }}
     >
-      {/* Top row: emoji + name + schedule */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
         <div style={{
           width: 44, height: 44, borderRadius: 12,
@@ -75,7 +75,6 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
         )}
       </div>
 
-      {/* Description */}
       <p style={{
         fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 16px',
         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
@@ -83,23 +82,20 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
         {bot.description || bot.prompt}
       </p>
 
-      {/* Bottom row: status + actions */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         paddingTop: 14, borderTop: '1px solid var(--divider)',
       }}>
-        {/* Status indicator */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{
             width: 7, height: 7, borderRadius: '50%',
             background: statusColor,
           }} className={isRunning ? 'pulse-dot' : ''} />
           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>
-            {isRunning ? 'Running' : bot.last_status === 'failed' ? 'Error' : bot.last_status === 'completed' ? 'Ready' : 'Ready'}
+            {isRunning ? 'Running' : bot.last_status === 'failed' ? 'Error' : 'Ready'}
           </span>
         </div>
 
-        {/* Actions */}
         <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
           <button onClick={() => onRun(bot.id)} disabled={disabled}
             style={{
@@ -114,7 +110,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
             onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = 'var(--accent-hover)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; }}
           >
-            <svg width="10" height="12" viewBox="0 0 10 12" fill="white"><path d="M0 0l10 6-10 6z"/></svg>
+            <Play size={10} fill="white" strokeWidth={0} />
             Run
           </button>
           {onEdit && (
@@ -122,12 +118,12 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
               style={{
                 width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 borderRadius: 8, border: 'none', background: 'transparent',
-                cursor: 'pointer', fontSize: 14, color: 'var(--text-tertiary)',
+                cursor: 'pointer', color: 'var(--text-tertiary)',
                 transition: 'all 0.15s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
-            >✏️</button>
+            ><Pencil size={15} strokeWidth={1.5} /></button>
           )}
           {onRefresh && (
             <button onClick={async () => { await api.duplicateBot(bot.id); onRefresh(); }}
@@ -135,12 +131,12 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
               style={{
                 width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 borderRadius: 8, border: 'none', background: 'transparent',
-                cursor: 'pointer', fontSize: 14, color: 'var(--text-tertiary)',
+                cursor: 'pointer', color: 'var(--text-tertiary)',
                 transition: 'all 0.15s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
-            >📋</button>
+            ><Copy size={15} strokeWidth={1.5} /></button>
           )}
         </div>
       </div>
