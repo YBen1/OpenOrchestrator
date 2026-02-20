@@ -5,12 +5,14 @@ import BotDetail from './components/BotDetail';
 import NewBotModal from './components/NewBotModal';
 import EditBotModal from './components/EditBotModal';
 import Settings from './components/Settings';
+import TemplateGallery from './components/TemplateGallery';
 
 export default function App() {
   const [bots, setBots] = useState([]);
   const [view, setView] = useState({ page: 'dashboard' });
   const [showNewBot, setShowNewBot] = useState(false);
   const [editBot, setEditBot] = useState(null);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [activity, setActivity] = useState([]);
   const [triggers, setTriggers] = useState([]);
   const [hasKeys, setHasKeys] = useState(true);
@@ -78,6 +80,9 @@ export default function App() {
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.06)'}
             onMouseLeave={e => { if (view.page !== 'settings') e.currentTarget.style.background = 'transparent' }}
           >⚙️</button>
+          <button onClick={() => setShowTemplates(true)} className="btn-secondary" style={{ fontSize: 13 }}>
+            📋 Vorlagen
+          </button>
           <button onClick={() => setShowNewBot(true)} className="btn-primary">
             + Neuer Bot
           </button>
@@ -131,6 +136,13 @@ export default function App() {
           bots={bots}
           onClose={() => setShowNewBot(false)}
           onCreate={async (data) => { await api.createBot(data); setShowNewBot(false); refresh(); }}
+        />
+      )}
+
+      {showTemplates && (
+        <TemplateGallery
+          onClose={() => setShowTemplates(false)}
+          onCreate={async (data) => { await api.createBot(data); setShowTemplates(false); refresh(); }}
         />
       )}
 

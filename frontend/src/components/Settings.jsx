@@ -35,6 +35,14 @@ const PROVIDERS = [
     placeholder: '...',
   },
   {
+    id: 'brave', name: 'Brave Search', emoji: '🔍', key: 'brave_api_key',
+    models: 'Web-Suche für Bots',
+    cost: '2000 Suchen/Mo gratis',
+    signupUrl: 'https://brave.com/search/api/',
+    keyUrl: 'https://api.search.brave.com/app/keys',
+    placeholder: 'BSA...',
+  },
+  {
     id: 'ollama', name: 'Lokal (Ollama)', emoji: '🏠', key: 'ollama_base_url',
     models: 'Llama, Mistral, Phi lokal',
     cost: 'Kostenlos',
@@ -53,10 +61,16 @@ export default function Settings({ onBack }) {
   const [testResult, setTestResult] = useState({});
   const [inputs, setInputs] = useState({});
   const [tab, setTab] = useState('keys');
+  const [channels, setChannels] = useState([]);
+  const [tgToken, setTgToken] = useState('');
+  const [tgChat, setTgChat] = useState(null);
+  const [tgSearching, setTgSearching] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState('');
 
   useEffect(() => {
     api.getSettings().then(setSettings);
     api.getUsage().then(setUsage);
+    api.getChannels().then(setChannels);
   }, []);
 
   const handleTest = async (provider) => {
@@ -78,9 +92,36 @@ export default function Settings({ onBack }) {
     setTesting(null);
   };
 
+  const findTgChat = async () => {
+    if (!tgToken) return;
+    setTgSearching(true);
+    try {
+      const chat = await api.findTelegramChat(tgToken);
+      setTgChat(chat);
+    } catch {
+      setTgChat({ error: true });
+    }
+    setTgSearching(false);
+  };
+
+  const addTelegramChannel = async () => {
+    if (!tgToken || !tgChat?.chat_id) return;
+    await api.createChannel({ type: 'telegram', name: `Telegram: ${tgChat.name}`, config: { bot_token: tgToken, chat_id: tgChat.chat_id } });
+    setChannels(await api.getChannels());
+    setTgToken(''); setTgChat(null);
+  };
+
+  const addWebhook = async () => {
+    if (!webhookUrl) return;
+    await api.createChannel({ type: 'webhook', name: 'Webhook', config: { url: webhookUrl } });
+    setChannels(await api.getChannels());
+    setWebhookUrl('');
+  };
+
   const tabs = [
-    { key: 'keys', label: '🔑 API-Keys', },
-    { key: 'usage', label: '📊 Verbrauch', },
+    { key: 'keys', label: '🔑 API-Keys' },
+    { key: 'channels', label: '📱 Channels' },
+    { key: 'usage', label: '📊 Verbrauch' },
   ];
 
   return (
@@ -222,6 +263,90 @@ export default function Settings({ onBack }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {tab === 'channels' && (
+        <div className="space-y-6">
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+            Lass dir Bot-Ergebnisse per Telegram, Webhook oder E-Mail schicken.
+          </p>
+
+          {/* Existing channels */}
+          {channels.length > 0 && (
+            <div className="glass-card divide-y" style={{ borderColor: 'var(--divider)' }}>
+              {channels.map(ch => (
+                <div key={ch.id} className="flex items-center gap-4" style={{ padding: '14px 20px' }}>
+                  <span style={{ fontSize: 22 }}>{ch.type === 'telegram' ? '📱' : ch.type === 'webhook' ? '🪝' : '📧'}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 500, fontSize: 14 }}>{ch.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{ch.type}</div>
+                  </div>
+                  <span className="status-pill" style={{
+                    background: ch.status === 'connected' ? 'rgba(52,199,89,0.1)' : 'rgba(255,59,48,0.1)',
+                    color: ch.status === 'connected' ? '#248A3D' : '#D70015',
+                  }}>
+                    {ch.status === 'connected' ? '✅ Verbunden' : '❌ Fehler'}
+                  </span>
+                  <button onClick={async () => {
+                    await api.deleteChannel(ch.id);
+                    setChannels(await api.getChannels());
+                  }} style={{
+                    background: 'none', border: 'none', cursor: 'pointer', fontSize: 16,
+                    color: 'var(--text-tertiary)', padding: 4,
+                  }}>🗑️</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Telegram */}
+          <div className="glass-card" style={{ padding: 20 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>📱 Telegram hinzufügen</h3>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.6 }}>
+              1. Schreibe{' '}
+              <a href="https://t.me/BotFather" target="_blank" rel="noopener" style={{ color: 'var(--accent)' }}>@BotFather</a>
+              {' '}auf Telegram → <code>/newbot</code><br/>
+              2. Du bekommst einen Token (sieht so aus: <code>123456:ABC...</code>)<br/>
+              3. Schreibe deinem neuen Bot eine Nachricht, dann klicke "Chat suchen"
+            </div>
+            <div className="flex gap-2" style={{ marginBottom: 8 }}>
+              <input className="input-apple" placeholder="Bot-Token einfügen..." value={tgToken}
+                onChange={e => setTgToken(e.target.value)} style={{ flex: 1 }} />
+              <button onClick={findTgChat} className="btn-secondary" disabled={!tgToken || tgSearching}
+                style={{ whiteSpace: 'nowrap', opacity: tgSearching ? 0.6 : 1 }}>
+                {tgSearching ? '⏳ Suche...' : '🔍 Chat suchen'}
+              </button>
+            </div>
+            {tgChat && !tgChat.error && (
+              <div className="animate-in flex items-center gap-3" style={{ marginTop: 8 }}>
+                <span style={{ fontSize: 13, color: '#248A3D' }}>
+                  ✅ Chat gefunden: <strong>{tgChat.name}</strong> (ID: {tgChat.chat_id})
+                </span>
+                <button onClick={addTelegramChannel} className="btn-primary" style={{ padding: '6px 14px', fontSize: 13 }}>
+                  Speichern
+                </button>
+              </div>
+            )}
+            {tgChat?.error && (
+              <div className="animate-in" style={{ fontSize: 13, color: '#D70015', marginTop: 8 }}>
+                ❌ Kein Chat gefunden — schreibe deinem Bot zuerst eine Nachricht auf Telegram
+              </div>
+            )}
+          </div>
+
+          {/* Add Webhook */}
+          <div className="glass-card" style={{ padding: 20 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>🪝 Webhook hinzufügen</h3>
+            <div className="flex gap-2">
+              <input className="input-apple" placeholder="https://example.com/webhook" value={webhookUrl}
+                onChange={e => setWebhookUrl(e.target.value)} style={{ flex: 1 }} />
+              <button onClick={addWebhook} className="btn-primary" disabled={!webhookUrl}
+                style={{ whiteSpace: 'nowrap' }}>
+                Speichern
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

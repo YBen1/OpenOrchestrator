@@ -66,6 +66,24 @@ class Run(Base):
     output_hash = Column(String, nullable=True)
 
 
+class Channel(Base):
+    __tablename__ = "channels"
+    id = Column(String, primary_key=True, default=new_id)
+    type = Column(String, nullable=False)  # telegram | email | webhook
+    name = Column(String, default="")
+    config = Column(Text, nullable=False)  # JSON
+    status = Column(String, default="pending")  # connected | pending | error
+    error_msg = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+
+
+class BotChannel(Base):
+    __tablename__ = "bot_channels"
+    bot_id = Column(String, ForeignKey("bots.id", ondelete="CASCADE"), primary_key=True)
+    channel_id = Column(String, ForeignKey("channels.id", ondelete="CASCADE"), primary_key=True)
+    notify_rule = Column(String, default="always")  # always | on_new | on_error | never
+
+
 class Result(Base):
     __tablename__ = "results"
     id = Column(String, primary_key=True, default=new_id)

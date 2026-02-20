@@ -39,6 +39,25 @@ def run_migrations():
         except sqlite3.OperationalError:
             pass
 
+    # Channels table
+    c.execute("""CREATE TABLE IF NOT EXISTS channels (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        name TEXT DEFAULT '',
+        config TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        error_msg TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    # Bot-Channel mapping
+    c.execute("""CREATE TABLE IF NOT EXISTS bot_channels (
+        bot_id TEXT REFERENCES bots(id) ON DELETE CASCADE,
+        channel_id TEXT REFERENCES channels(id) ON DELETE CASCADE,
+        notify_rule TEXT DEFAULT 'always',
+        PRIMARY KEY (bot_id, channel_id)
+    )""")
+
     conn.commit()
     conn.close()
     print("[migrations] done")

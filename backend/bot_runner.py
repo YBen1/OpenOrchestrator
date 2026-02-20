@@ -226,11 +226,15 @@ def _save_error(run_id, status, error_msg, log_lines, db_factory):
 
 
 async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tuple:
-    """Call LLM, returns (output, tokens_in, tokens_out)."""
+    """Call LLM with optional tool-calling loop. Returns (output, tokens_in, tokens_out)."""
+    import json as _json
+    from tools import get_tool_schemas, execute_tool_call
+
     db = db_factory()
     try:
         provider, key = _get_key_for_model(bot.model, db)
         system_prompt = _build_context(bot, db)
+        brave_key = _get_setting(db, "brave_api_key")
     finally:
         db.close()
 
@@ -238,32 +242,91 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
     if input_context:
         user_message = f"Kontext vom vorherigen Schritt:\n\n{input_context}\n\nAufgabe: {bot.prompt}"
 
+    # Parse enabled tools
+    enabled_tools = []
+    try:
+        enabled_tools = _json.loads(bot.tools) if bot.tools else []
+    except Exception:
+        pass
+
+    tool_schemas = get_tool_schemas(enabled_tools, brave_key, bot.docs_path) if enabled_tools else []
+
     if provider == "openai" and key:
         await log(f"Verwende OpenAI ({bot.model})...")
         import openai
         client = openai.AsyncOpenAI(api_key=key)
-        resp = await client.chat.completions.create(
-            model=bot.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            max_tokens=2000,
-        )
-        usage = resp.usage
-        return resp.choices[0].message.content, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+        total_in, total_out = 0, 0
+
+        for iteration in range(10):  # max 10 tool-call rounds
+            kwargs = {"model": bot.model, "messages": messages, "max_tokens": 4000}
+            if tool_schemas and iteration < 8:
+                kwargs["tools"] = tool_schemas
+            resp = await client.chat.completions.create(**kwargs)
+            if resp.usage:
+                total_in += resp.usage.prompt_tokens
+                total_out += resp.usage.completion_tokens
+
+            choice = resp.choices[0]
+            if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
+                messages.append(choice.message)
+                for tc in choice.message.tool_calls:
+                    fn = tc.function.name
+                    args = _json.loads(tc.function.arguments) if tc.function.arguments else {}
+                    await log(f"🔧 Tool: {fn}({', '.join(f'{k}={v!r}' for k,v in args.items())})")
+                    result = await execute_tool_call(fn, args, enabled_tools, brave_key, bot.docs_path)
+                    messages.append({"role": "tool", "tool_call_id": tc.id, "content": result[:4000]})
+            else:
+                return choice.message.content or "", total_in, total_out
+
+        return messages[-1].get("content", "") if isinstance(messages[-1], dict) else "", total_in, total_out
 
     elif provider == "anthropic" and key:
         await log(f"Verwende Anthropic ({bot.model})...")
         import anthropic
         client = anthropic.AsyncAnthropic(api_key=key)
-        resp = await client.messages.create(
-            model=bot.model,
-            max_tokens=2000,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-        )
-        return resp.content[0].text, resp.usage.input_tokens, resp.usage.output_tokens
+
+        # Convert tool schemas to Anthropic format
+        anthro_tools = []
+        for ts in tool_schemas:
+            fn = ts["function"]
+            anthro_tools.append({
+                "name": fn["name"],
+                "description": fn["description"],
+                "input_schema": fn["parameters"],
+            })
+
+        messages = [{"role": "user", "content": user_message}]
+        total_in, total_out = 0, 0
+
+        for iteration in range(10):
+            kwargs = {"model": bot.model, "max_tokens": 4000, "system": system_prompt, "messages": messages}
+            if anthro_tools and iteration < 8:
+                kwargs["tools"] = anthro_tools
+            resp = await client.messages.create(**kwargs)
+            total_in += resp.usage.input_tokens
+            total_out += resp.usage.output_tokens
+
+            if resp.stop_reason == "tool_use":
+                messages.append({"role": "assistant", "content": resp.content})
+                tool_results = []
+                for block in resp.content:
+                    if block.type == "tool_use":
+                        await log(f"🔧 Tool: {block.name}({block.input})")
+                        result = await execute_tool_call(block.name, block.input, enabled_tools, brave_key, bot.docs_path)
+                        tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": result[:4000]})
+                messages.append({"role": "user", "content": tool_results})
+            else:
+                text = ""
+                for block in resp.content:
+                    if hasattr(block, "text"):
+                        text += block.text
+                return text, total_in, total_out
+
+        return "", total_in, total_out
 
     elif provider == "google" and key:
         await log(f"Verwende Google Gemini ({bot.model})...")
@@ -280,12 +343,8 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
         from mistralai import Mistral
         client = Mistral(api_key=key)
         resp = await asyncio.to_thread(
-            client.chat.complete,
-            model=bot.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
+            client.chat.complete, model=bot.model,
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
         )
         usage = resp.usage
         return resp.choices[0].message.content, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0
@@ -297,10 +356,7 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
         client = openai.AsyncOpenAI(base_url=f"{base_url}/v1", api_key="ollama")
         resp = await client.chat.completions.create(
             model=bot.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
         )
         usage = resp.usage
         return resp.choices[0].message.content, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0

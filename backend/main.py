@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import engine, Base, SessionLocal, get_db
-from models import Bot, Run, Result, Trigger, Setting, new_id, utcnow
+from models import Bot, Run, Result, Trigger, Setting, Channel, BotChannel, new_id, utcnow
 from schemas import BotCreate, BotUpdate, BotOut, TriggerCreate, TriggerOut, RunOut, ResultOut
 from bot_runner import run_bot, ws_connections, active_tasks
 from scheduler import init_scheduler, shutdown_scheduler, register_bot, unregister_bot
@@ -52,7 +52,7 @@ def _bot_to_out(b: Bot) -> dict:
 
 # ── Settings ──────────────────────────────────────────────
 
-SENSITIVE_KEYS = {"openai_api_key", "anthropic_api_key", "google_api_key", "mistral_api_key"}
+SENSITIVE_KEYS = {"openai_api_key", "anthropic_api_key", "google_api_key", "mistral_api_key", "brave_api_key"}
 
 
 @app.get("/api/settings")
@@ -423,6 +423,138 @@ async def websocket_endpoint(websocket: WebSocket, bot_id: str):
     except WebSocketDisconnect:
         ws_connections[bot_id].discard(websocket)
 
+
+# ── Channels ──────────────────────────────────────────────
+
+class ChannelCreate(BaseModel):
+    type: str
+    name: str = ""
+    config: dict
+
+
+@app.get("/api/channels")
+def list_channels(db: Session = Depends(get_db)):
+    channels = db.query(Channel).all()
+    result = []
+    for ch in channels:
+        cfg = json.loads(ch.config)
+        # Mask sensitive fields
+        safe_cfg = {}
+        for k, v in cfg.items():
+            if "token" in k.lower() or "pass" in k.lower():
+                safe_cfg[k] = "•" * 10 + str(v)[-4:] if len(str(v)) > 4 else v
+            else:
+                safe_cfg[k] = v
+        result.append({
+            "id": ch.id, "type": ch.type, "name": ch.name,
+            "config": safe_cfg, "status": ch.status,
+            "error_msg": ch.error_msg, "created_at": ch.created_at.isoformat() if ch.created_at else None,
+        })
+    return result
+
+
+@app.post("/api/channels")
+async def create_channel(data: ChannelCreate, db: Session = Depends(get_db)):
+    ch = Channel(
+        id=new_id(), type=data.type, name=data.name or data.type.capitalize(),
+        config=json.dumps(data.config), status="pending",
+    )
+
+    # Auto-test connection
+    if data.type == "telegram":
+        from channels import test_telegram
+        try:
+            result = await test_telegram(data.config.get("bot_token", ""), data.config.get("chat_id", ""))
+            if result.get("ok"):
+                ch.status = "connected"
+            else:
+                ch.status = "error"
+                ch.error_msg = result.get("description", "Test fehlgeschlagen")
+        except Exception as e:
+            ch.status = "error"
+            ch.error_msg = str(e)[:200]
+    elif data.type == "webhook":
+        ch.status = "connected"  # Can't test without sending data
+
+    db.add(ch)
+    db.commit()
+    db.refresh(ch)
+    return {"id": ch.id, "type": ch.type, "name": ch.name, "status": ch.status, "error_msg": ch.error_msg}
+
+
+@app.delete("/api/channels/{channel_id}")
+def delete_channel(channel_id: str, db: Session = Depends(get_db)):
+    ch = db.query(Channel).get(channel_id)
+    if not ch:
+        raise HTTPException(404)
+    db.query(BotChannel).filter(BotChannel.channel_id == channel_id).delete()
+    db.delete(ch)
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/channels/telegram/find-chat")
+async def find_telegram_chat(data: dict):
+    from channels import get_telegram_chat_id
+    bot_token = data.get("bot_token", "")
+    if not bot_token:
+        raise HTTPException(400, "bot_token required")
+    result = await get_telegram_chat_id(bot_token)
+    if result:
+        return result
+    raise HTTPException(404, "Kein Chat gefunden — schreibe deinem Bot zuerst eine Nachricht auf Telegram")
+
+
+@app.post("/api/channels/{channel_id}/test")
+async def test_channel(channel_id: str, db: Session = Depends(get_db)):
+    ch = db.query(Channel).get(channel_id)
+    if not ch:
+        raise HTTPException(404)
+    cfg = json.loads(ch.config)
+    if ch.type == "telegram":
+        from channels import test_telegram
+        result = await test_telegram(cfg.get("bot_token"), cfg.get("chat_id"))
+        if result.get("ok"):
+            ch.status = "connected"
+            ch.error_msg = None
+        else:
+            ch.status = "error"
+            ch.error_msg = result.get("description", "Fehler")
+        db.commit()
+        return {"ok": result.get("ok"), "error": ch.error_msg}
+    return {"ok": False, "error": "Nicht unterstützt"}
+
+
+# Bot-Channel assignments
+@app.get("/api/bots/{bot_id}/channels")
+def get_bot_channels(bot_id: str, db: Session = Depends(get_db)):
+    links = db.query(BotChannel).filter(BotChannel.bot_id == bot_id).all()
+    return [{"channel_id": l.channel_id, "notify_rule": l.notify_rule} for l in links]
+
+
+class BotChannelUpdate(BaseModel):
+    channel_id: str
+    notify_rule: str = "always"
+
+
+@app.put("/api/bots/{bot_id}/channels")
+def update_bot_channels(bot_id: str, data: list[BotChannelUpdate], db: Session = Depends(get_db)):
+    db.query(BotChannel).filter(BotChannel.bot_id == bot_id).delete()
+    for item in data:
+        db.add(BotChannel(bot_id=bot_id, channel_id=item.channel_id, notify_rule=item.notify_rule))
+    db.commit()
+    return {"ok": True}
+
+
+# ── Templates ─────────────────────────────────────────────
+
+@app.get("/api/templates")
+def list_templates():
+    from templates import TEMPLATES
+    return TEMPLATES
+
+
+# ── Health ────────────────────────────────────────────────
 
 @app.get("/api/health")
 def health():
