@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import BotCard from './BotCard';
 
-export default function Dashboard({ bots, activity, triggers, onSelect, onRun, onRefresh }) {
+export default function Dashboard({ bots, activity, triggers, onSelect, onRun, onEdit, onRefresh }) {
   return (
     <div className="space-y-10">
       {/* Bot Grid */}
@@ -16,7 +16,7 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {bots.map(bot => (
-              <BotCard key={bot.id} bot={bot} onSelect={onSelect} onRun={onRun} />
+              <BotCard key={bot.id} bot={bot} onSelect={onSelect} onRun={onRun} onEdit={onEdit} />
             ))}
           </div>
         )}
@@ -131,10 +131,20 @@ function ActivityFeed({ activity, bots, onSelect }) {
                       </span>
                     )}
                   </div>
-                  {a.duration_ms != null && (
-                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8, display: 'block' }}>
-                      Dauer: {(a.duration_ms / 1000).toFixed(1)}s
-                    </span>
+                  <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)', flexWrap: 'wrap' }}>
+                    {a.duration_ms != null && <span>Dauer: {(a.duration_ms / 1000).toFixed(1)}s</span>}
+                    {(a.tokens_in || a.tokens_out) ? (
+                      <span>{((a.tokens_in || 0) + (a.tokens_out || 0)).toLocaleString('de-DE')} Tokens</span>
+                    ) : null}
+                    {a.cost_estimate ? <span>${a.cost_estimate.toFixed(4)}</span> : null}
+                  </div>
+                  {a.error_message && (
+                    <div style={{
+                      marginTop: 8, padding: '8px 12px', borderRadius: 8, fontSize: 12,
+                      background: 'rgba(255, 59, 48, 0.06)', color: '#D70015',
+                    }}>
+                      {a.error_message}
+                    </div>
                   )}
                 </div>
               )}

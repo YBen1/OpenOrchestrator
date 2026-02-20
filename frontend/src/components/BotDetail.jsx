@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, connectWs } from '../api';
 
-export default function BotDetail({ botId, onBack, onRefresh }) {
+export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
   const [bot, setBot] = useState(null);
   const [runs, setRuns] = useState([]);
   const [results, setResults] = useState([]);
@@ -70,6 +70,11 @@ export default function BotDetail({ botId, onBack, onRefresh }) {
           <button onClick={async () => { setLogs([]); await api.runBot(botId); load(); }} className="btn-primary">
             ▶ Jetzt starten
           </button>
+          {onEdit && (
+            <button onClick={() => onEdit(bot)} className="btn-secondary" style={{ padding: '8px 14px' }}>
+              ✏️ Bearbeiten
+            </button>
+          )}
           <button onClick={async () => { if(confirm('Bot löschen?')) { await api.deleteBot(botId); onRefresh(); onBack(); }}}
             style={{
               background: 'rgba(255, 59, 48, 0.08)', color: '#FF3B30',

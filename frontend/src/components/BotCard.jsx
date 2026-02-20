@@ -1,4 +1,5 @@
-export default function BotCard({ bot, onSelect, onRun }) {
+export default function BotCard({ bot, onSelect, onRun, onEdit }) {
+  const isDisabled = bot.enabled === false;
   const statusColors = {
     running: { bg: 'rgba(52, 199, 89, 0.1)', dot: '#34C759', text: '#248A3D' },
     completed: { bg: 'rgba(52, 199, 89, 0.1)', dot: '#34C759', text: '#248A3D' },
@@ -7,11 +8,22 @@ export default function BotCard({ bot, onSelect, onRun }) {
   };
   const s = statusColors[bot.last_status] || statusColors.idle;
 
+  const scheduleLabel = (cron) => {
+    if (!cron) return null;
+    const map = {
+      '*/5 * * * *': 'Alle 5 Min', '*/15 * * * *': 'Alle 15 Min',
+      '*/30 * * * *': 'Alle 30 Min', '0 * * * *': 'Jede Stunde',
+      '0 */6 * * *': 'Alle 6h', '0 9 * * *': 'Täglich 9:00',
+      '0 9 * * 1': 'Mo 9:00',
+    };
+    return map[cron] || cron;
+  };
+
   return (
     <div
       className="glass-card hover-lift p-5 cursor-pointer"
       onClick={() => onSelect(bot.id)}
-      style={{ transition: 'all 0.2s ease' }}
+      style={{ transition: 'all 0.2s ease', opacity: isDisabled ? 0.5 : 1 }}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
@@ -27,6 +39,7 @@ export default function BotCard({ bot, onSelect, onRun }) {
           <div>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
               {bot.name}
+              {isDisabled && <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 6 }}>pausiert</span>}
             </h3>
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{bot.model}</span>
           </div>
@@ -35,7 +48,7 @@ export default function BotCard({ bot, onSelect, onRun }) {
           <span style={{
             fontSize: 11, color: 'var(--text-secondary)',
             background: 'var(--bg)', padding: '3px 8px', borderRadius: 8,
-          }}>⏰ {bot.schedule}</span>
+          }}>⏰ {scheduleLabel(bot.schedule)}</span>
         )}
       </div>
 
@@ -58,12 +71,16 @@ export default function BotCard({ bot, onSelect, onRun }) {
           {bot.last_status || 'Bereit'}
         </div>
         <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-          <button onClick={() => onRun(bot.id)} className="btn-primary" style={{ padding: '6px 14px', fontSize: 13 }}>
+          <button onClick={() => onRun(bot.id)} className="btn-primary"
+            style={{ padding: '6px 14px', fontSize: 13, opacity: isDisabled ? 0.4 : 1 }}
+            disabled={isDisabled}>
             ▶ Run
           </button>
-          <button onClick={() => onSelect(bot.id)} className="btn-secondary" style={{ padding: '6px 14px', fontSize: 13 }}>
-            Details
-          </button>
+          {onEdit && (
+            <button onClick={() => onEdit(bot)} className="btn-secondary" style={{ padding: '6px 14px', fontSize: 13 }}>
+              ✏️
+            </button>
+          )}
         </div>
       </div>
     </div>

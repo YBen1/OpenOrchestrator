@@ -23,6 +23,8 @@ class BotUpdate(BaseModel):
     tools: Optional[List[str]] = None
     schedule: Optional[str] = None
     notify: Optional[List[str]] = None
+    enabled: Optional[bool] = None
+    max_runtime_seconds: Optional[int] = None
 
 
 class BotOut(BaseModel):
@@ -35,6 +37,8 @@ class BotOut(BaseModel):
     tools: List[str]
     schedule: Optional[str]
     notify: List[str]
+    enabled: Optional[bool] = True
+    max_runtime_seconds: Optional[int] = 120
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
@@ -70,9 +74,13 @@ class RunOut(BaseModel):
     input: Optional[str]
     output: Optional[str]
     log: Optional[str]
+    error_message: Optional[str] = None
     started_at: Optional[datetime]
     finished_at: Optional[datetime]
     duration_ms: Optional[int]
+    tokens_in: Optional[int] = None
+    tokens_out: Optional[int] = None
+    cost_estimate: Optional[float] = None
 
     class Config:
         from_attributes = True

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Text, Boolean, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, Boolean, Integer, Float, DateTime, ForeignKey
 from database import Base
 
 
@@ -10,6 +10,13 @@ def new_id():
 
 def utcnow():
     return datetime.now(timezone.utc)
+
+
+class Setting(Base):
+    __tablename__ = "settings"
+    key = Column(String, primary_key=True)
+    value = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class Bot(Base):
@@ -24,6 +31,8 @@ class Bot(Base):
     schedule = Column(String, nullable=True)
     docs_path = Column(String, nullable=True)
     notify = Column(Text, default='["dashboard"]')
+    enabled = Column(Boolean, default=True)
+    max_runtime_seconds = Column(Integer, default=120)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -47,9 +56,14 @@ class Run(Base):
     input = Column(Text, nullable=True)
     output = Column(Text, nullable=True)
     log = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
     started_at = Column(DateTime, default=utcnow)
     finished_at = Column(DateTime, nullable=True)
     duration_ms = Column(Integer, nullable=True)
+    tokens_in = Column(Integer, nullable=True)
+    tokens_out = Column(Integer, nullable=True)
+    cost_estimate = Column(Float, nullable=True)
+    output_hash = Column(String, nullable=True)
 
 
 class Result(Base):
