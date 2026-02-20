@@ -27,7 +27,7 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
   }, [botId]);
   useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [logs]);
 
-  if (!bot) return <div className="empty-state"><div className="empty-title">Lade...</div></div>;
+  if (!bot) return <div className="empty-state"><div className="empty-title">Loading...</div></div>;
 
   const stats = {
     runs: runs.length,
@@ -37,10 +37,10 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
   };
 
   const tabs = [
-    { key: 'results', label: '📋 Ergebnisse' },
-    { key: 'runs', label: '🔄 Läufe' },
-    { key: 'docs', label: '📄 Dokumente' },
-    { key: 'log', label: '📊 Live-Log' },
+    { key: 'results', label: '📋 Results' },
+    { key: 'runs', label: '🔄 Runs' },
+    { key: 'docs', label: '📄 Documents' },
+    { key: 'log', label: '📊 Live Log' },
   ];
 
   return (
@@ -60,16 +60,16 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={async () => { setLogs([]); await api.runBot(botId); load(); }} className="btn-primary">▶ Starten</button>
-          {onEdit && <button onClick={() => onEdit(bot)} className="btn-secondary">✏️ Bearbeiten</button>}
+          <button onClick={async () => { setLogs([]); await api.runBot(botId); load(); }} className="btn-primary">▶ Run</button>
+          {onEdit && <button onClick={() => onEdit(bot)} className="btn-secondary">✏️ Edit</button>}
           <button onClick={async () => {
             const data = await api.exportBot(botId);
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             Object.assign(document.createElement('a'), { href: url, download: `${bot.name}.json` }).click();
-          }} className="btn-ghost" title="Bot exportieren">📥</button>
-          <a href={api.exportCsv(botId)} className="btn-ghost" title="CSV exportieren" style={{ textDecoration: 'none' }}>📊</a>
-          <button onClick={async () => { if(confirm('Bot löschen?')) { await api.deleteBot(botId); onRefresh(); onBack(); }}}
+          }} className="btn-ghost" title="Export bot">📥</button>
+          <a href={api.exportCsv(botId)} className="btn-ghost" title="Export CSV" style={{ textDecoration: 'none' }}>📊</a>
+          <button onClick={async () => { if(confirm('Delete bot?')) { await api.deleteBot(botId); onRefresh(); onBack(); }}}
             className="btn-ghost" style={{ color: 'var(--danger)' }}>🗑️</button>
         </div>
       </div>
@@ -77,10 +77,10 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Läufe', value: stats.runs, color: 'var(--accent)' },
-          { label: 'Ergebnisse', value: stats.results, color: 'var(--purple)' },
-          { label: 'Intervall', value: bot.schedule || 'Manuell', color: 'var(--warning)' },
-          { label: 'Erfolgsrate', value: `${stats.rate}%`, color: 'var(--success)' },
+          { label: 'Runs', value: stats.runs, color: 'var(--accent)' },
+          { label: 'Results', value: stats.results, color: 'var(--purple)' },
+          { label: 'Schedule', value: bot.schedule || 'Manual', color: 'var(--warning)' },
+          { label: 'Success Rate', value: `${stats.rate}%`, color: 'var(--success)' },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
@@ -103,13 +103,13 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
         {tab === 'results' && (
           <div className="card divide-styled">
             {results.length === 0 ? (
-              <div className="empty-state"><p className="empty-title">Noch keine Ergebnisse.</p></div>
+              <div className="empty-state"><p className="empty-title">No results yet.</p></div>
             ) : results.map(r => (
               <div key={r.id} style={{ padding: 20 }}>
                 <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
                   <span style={{ fontWeight: 600, fontSize: 14 }}>{r.title}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                    {r.created_at ? new Date(r.created_at).toLocaleString('de-DE') : ''}
+                    {r.created_at ? new Date(r.created_at).toLocaleString('en-US') : ''}
                   </span>
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{r.content}</p>
@@ -121,7 +121,7 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
         {tab === 'runs' && (
           <div className="card divide-styled">
             {runs.length === 0 ? (
-              <div className="empty-state"><p className="empty-title">Noch keine Läufe.</p></div>
+              <div className="empty-state"><p className="empty-title">No runs yet.</p></div>
             ) : runs.map(r => (
               <div key={r.id} className="flex items-center gap-4" style={{ padding: '12px 20px', fontSize: 14 }}>
                 <span style={{
@@ -132,7 +132,7 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{r.trigger}</span>
                 <span style={{ flex: 1 }} />
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
-                  {r.started_at ? new Date(r.started_at).toLocaleString('de-DE') : ''}
+                  {r.started_at ? new Date(r.started_at).toLocaleString('en-US') : ''}
                 </span>
                 {r.duration_ms != null && <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{(r.duration_ms / 1000).toFixed(1)}s</span>}
               </div>
@@ -143,7 +143,7 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
         {tab === 'docs' && (
           <div className="card" style={{ padding: 20 }}>
             {docs.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>Keine Dokumente.</p>
+              <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>No documents.</p>
             ) : docs.map(d => (
               <div key={d.name} className="flex items-center gap-2" style={{ padding: '6px 0', fontSize: 14, color: 'var(--text-secondary)' }}>📄 {d.name}</div>
             ))}
@@ -153,7 +153,7 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
         {tab === 'log' && (
           <div ref={logRef} className="log-output" style={{ height: 320 }}>
             {logs.length === 0 ? (
-              <p style={{ color: 'var(--text-quaternary)' }}>Starte einen Bot-Run um Live-Logs zu sehen...</p>
+              <p style={{ color: 'var(--text-quaternary)' }}>Start a bot run to see live logs...</p>
             ) : logs.map((line, i) => <div key={i} style={{ padding: '1px 0' }}>{line}</div>)}
           </div>
         )}

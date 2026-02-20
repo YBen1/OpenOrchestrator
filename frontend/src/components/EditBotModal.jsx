@@ -12,16 +12,16 @@ const MODELS = [
 ];
 
 const TOOLS = [
-  { value: 'web_search', label: '🔍 Web-Suche' }, { value: 'browser', label: '🌐 Browser' },
-  { value: 'code', label: '💻 Code' }, { value: 'files', label: '📁 Dateien' },
+  { value: 'web_search', label: '🔍 Web Search' }, { value: 'browser', label: '🌐 Browser' },
+  { value: 'code', label: '💻 Code' }, { value: 'files', label: '📁 Files' },
 ];
 
 const SCHEDULES = [
-  { label: 'Manuell', value: '' }, { label: 'Alle 5 Min', value: '*/5 * * * *' },
-  { label: 'Alle 15 Min', value: '*/15 * * * *' }, { label: 'Alle 30 Min', value: '*/30 * * * *' },
-  { label: 'Stündlich', value: '0 * * * *' }, { label: 'Alle 6h', value: '0 */6 * * *' },
-  { label: 'Täglich 9:00', value: '0 9 * * *' }, { label: 'Mo 9:00', value: '0 9 * * 1' },
-  { label: 'Eigene...', value: 'custom' },
+  { label: 'Manual', value: '' }, { label: 'Every 5 min', value: '*/5 * * * *' },
+  { label: 'Every 15 min', value: '*/15 * * * *' }, { label: 'Every 30 min', value: '*/30 * * * *' },
+  { label: 'Hourly', value: '0 * * * *' }, { label: 'Every 6h', value: '0 */6 * * *' },
+  { label: 'Daily 9:00', value: '0 9 * * *' }, { label: 'Mon 9:00', value: '0 9 * * 1' },
+  { label: 'Custom...', value: 'custom' },
 ];
 
 export default function EditBotModal({ bot, onClose, onSave }) {
@@ -39,13 +39,13 @@ export default function EditBotModal({ bot, onClose, onSave }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card animate-scale" style={{ maxWidth: 520, padding: 28, maxHeight: '90vh', overflowY: 'auto' }}
         onClick={e => e.stopPropagation()}>
-        <ModalHeader title="Bot bearbeiten" onClose={onClose} />
+        <ModalHeader title="Edit Bot" onClose={onClose} />
         <form onSubmit={e => { e.preventDefault(); if(form.name && form.prompt) onSave({ ...form, schedule: form.schedule || null }); }}
           className="space-y-5" style={{ marginTop: 20 }}>
 
           {/* Enabled toggle */}
           <div className="flex items-center justify-between">
-            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Bot aktiv</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Bot active</span>
             <Toggle active={form.enabled} onChange={() => set('enabled', !form.enabled)} />
           </div>
 
@@ -58,11 +58,11 @@ export default function EditBotModal({ bot, onClose, onSave }) {
             </Field>
           </div>
 
-          <Field label="Beschreibung">
+          <Field label="Description">
             <input value={form.description} onChange={e => set('description', e.target.value)} className="input-apple" />
           </Field>
 
-          <Field label="Was soll er tun?">
+          <Field label="What should it do?">
             <textarea value={form.prompt} onChange={e => set('prompt', e.target.value)} rows={4} className="input-apple" required />
           </Field>
 
@@ -78,7 +78,7 @@ export default function EditBotModal({ bot, onClose, onSave }) {
             </div>
           </Field>
 
-          <Field label="Zeitplan">
+          <Field label="Schedule">
             <div className="flex flex-wrap gap-1.5" style={{ marginBottom: customCron ? 8 : 0 }}>
               {SCHEDULES.map(s => (
                 <button key={s.value} type="button" onClick={() => {
@@ -96,14 +96,14 @@ export default function EditBotModal({ bot, onClose, onSave }) {
               placeholder="*/30 * * * *" className="input-apple" style={{ fontFamily: 'SF Mono, Menlo, monospace' }} />}
           </Field>
 
-          <Field label="Max. Laufzeit (Sekunden)">
+          <Field label="Max runtime (seconds)">
             <input type="number" value={form.max_runtime_seconds} onChange={e => set('max_runtime_seconds', parseInt(e.target.value) || 120)}
               className="input-apple" min={10} max={600} />
           </Field>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary" style={{ flex: 1, padding: 12 }}>Abbrechen</button>
-            <button type="submit" className="btn-primary" style={{ flex: 1, padding: 12 }}>Speichern</button>
+            <button type="button" onClick={onClose} className="btn-secondary" style={{ flex: 1, padding: 12 }}>Cancel</button>
+            <button type="submit" className="btn-primary" style={{ flex: 1, padding: 12 }}>Save</button>
           </div>
         </form>
       </div>

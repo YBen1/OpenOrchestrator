@@ -1,9 +1,9 @@
 import { api } from '../api';
 
 const SCHEDULE_LABELS = {
-  '*/5 * * * *': 'Alle 5 Min', '*/15 * * * *': 'Alle 15 Min',
-  '*/30 * * * *': 'Alle 30 Min', '0 * * * *': 'Stündlich',
-  '0 */6 * * *': 'Alle 6h', '0 9 * * *': 'Täglich', '0 9 * * 1': 'Wöchentlich',
+  '*/5 * * * *': 'Every 5 min', '*/15 * * * *': 'Every 15 min',
+  '*/30 * * * *': 'Every 30 min', '0 * * * *': 'Hourly',
+  '0 */6 * * *': 'Every 6h', '0 9 * * *': 'Daily', '0 9 * * 1': 'Weekly',
 };
 
 const STATUS_COLORS = {
@@ -59,7 +59,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
               <span style={{
                 fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)',
                 textTransform: 'uppercase', letterSpacing: '0.04em',
-              }}>Pausiert</span>
+              }}>Paused</span>
             )}
           </div>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 400 }}>{bot.model}</span>
@@ -95,7 +95,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
             background: statusColor,
           }} className={isRunning ? 'pulse-dot' : ''} />
           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>
-            {isRunning ? 'Läuft' : bot.last_status === 'failed' ? 'Fehler' : bot.last_status === 'completed' ? 'Bereit' : 'Bereit'}
+            {isRunning ? 'Running' : bot.last_status === 'failed' ? 'Error' : bot.last_status === 'completed' ? 'Ready' : 'Ready'}
           </span>
         </div>
 
@@ -131,7 +131,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
           )}
           {onRefresh && (
             <button onClick={async () => { await api.duplicateBot(bot.id); onRefresh(); }}
-              title="Duplizieren"
+              title="Duplicate"
               style={{
                 width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 borderRadius: 8, border: 'none', background: 'transparent',

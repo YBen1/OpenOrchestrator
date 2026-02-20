@@ -44,14 +44,14 @@ export default function Onboarding({ onComplete }) {
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 64, marginBottom: 20 }}>⚡</div>
             <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>
-              Willkommen bei openOrchestrator
+              Welcome to openOrchestrator
             </h1>
             <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32, lineHeight: 1.6 }}>
-              Erstelle KI-Bots die für dich arbeiten.<br/>
-              Lass uns in 2 Minuten loslegen.
+              Create AI bots that work for you.<br/>
+              Let's get started in 2 minutes.
             </p>
             <button onClick={() => setStep(1)} className="btn-primary" style={{ padding: '14px 32px', fontSize: 16 }}>
-              Los geht's →
+              Let's go →
             </button>
           </div>
         )}
@@ -59,10 +59,10 @@ export default function Onboarding({ onComplete }) {
         {step === 1 && (
           <div>
             <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, letterSpacing: '-0.02em' }}>
-              🔑 KI-Anbieter verbinden
+              🔑 Connect AI Provider
             </h2>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>
-              Wähle einen Anbieter. Du brauchst einen API-Key — den bekommst du in 2 Minuten.
+              Choose a provider. You'll need an API key — it takes about 2 minutes.
             </p>
 
             <div className="space-y-3" style={{ marginBottom: 24 }}>
@@ -87,7 +87,7 @@ export default function Onboarding({ onComplete }) {
               <div className="animate-in">
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
                   <a href={provider.url} target="_blank" rel="noopener" style={{ color: 'var(--accent)' }}>
-                    Key erstellen bei {provider.name} ↗
+                    Create key at {provider.name} ↗
                   </a>
                 </div>
                 <div className="flex gap-2">
@@ -95,7 +95,7 @@ export default function Onboarding({ onComplete }) {
                     value={keyInput} onChange={e => setKeyInput(e.target.value)} style={{ flex: 1 }} />
                   <button onClick={testAndSave} className="btn-primary" disabled={testing || !keyInput}
                     style={{ whiteSpace: 'nowrap', opacity: testing ? 0.6 : 1 }}>
-                    {testing ? '⏳' : 'Testen'}
+                    {testing ? '⏳' : 'Test'}
                   </button>
                 </div>
                 {result && (
@@ -104,7 +104,7 @@ export default function Onboarding({ onComplete }) {
                     background: result.valid ? 'rgba(52,199,89,0.08)' : 'rgba(255,59,48,0.08)',
                     color: result.valid ? '#248A3D' : '#D70015',
                   }}>
-                    {result.valid ? '✅ Verbunden!' : `❌ ${result.error}`}
+                    {result.valid ? '✅ Connected!' : `❌ ${result.error}`}
                   </div>
                 )}
               </div>
@@ -114,7 +114,7 @@ export default function Onboarding({ onComplete }) {
               <button onClick={() => setStep(2)} style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 fontSize: 13, color: 'var(--text-tertiary)',
-              }}>Überspringen →</button>
+              }}>Skip →</button>
             </div>
           </div>
         )}
@@ -123,14 +123,14 @@ export default function Onboarding({ onComplete }) {
           <div style={{ textAlign: 'center' }} className="animate-in">
             <div style={{ fontSize: 64, marginBottom: 20 }}>🎉</div>
             <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, letterSpacing: '-0.02em' }}>
-              Alles bereit!
+              All set!
             </h2>
             <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32, lineHeight: 1.6 }}>
-              {result?.valid ? 'Dein KI-Anbieter ist verbunden. ' : ''}
-              Erstelle jetzt deinen ersten Bot oder wähle eine Vorlage.
+              {result?.valid ? 'Your AI provider is connected. ' : ''}
+              Create your first bot or choose a template.
             </p>
             <button onClick={onComplete} className="btn-primary" style={{ padding: '14px 32px', fontSize: 16 }}>
-              Dashboard öffnen →
+              Open Dashboard →
             </button>
           </div>
         )}

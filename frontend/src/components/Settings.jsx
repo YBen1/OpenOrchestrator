@@ -21,7 +21,7 @@ const PROVIDERS = [
   {
     id: 'google', name: 'Google Gemini', emoji: '🔵', key: 'google_api_key',
     models: 'Gemini 2.5 Pro, 2.0 Flash',
-    cost: 'Gratis-Tier verfügbar',
+    cost: 'Free tier available',
     signupUrl: 'https://aistudio.google.com',
     keyUrl: 'https://aistudio.google.com/apikey',
     placeholder: 'AIza...',
@@ -36,16 +36,16 @@ const PROVIDERS = [
   },
   {
     id: 'brave', name: 'Brave Search', emoji: '🔍', key: 'brave_api_key',
-    models: 'Web-Suche für Bots',
-    cost: '2000 Suchen/Mo gratis',
+    models: 'Web search for bots',
+    cost: '2000 searches/mo free',
     signupUrl: 'https://brave.com/search/api/',
     keyUrl: 'https://api.search.brave.com/app/keys',
     placeholder: 'BSA...',
   },
   {
     id: 'ollama', name: 'Lokal (Ollama)', emoji: '🏠', key: 'ollama_base_url',
-    models: 'Llama, Mistral, Phi lokal',
-    cost: 'Kostenlos',
+    models: 'Llama, Mistral, Phi local',
+    cost: 'Costlos',
     signupUrl: 'https://ollama.com/download',
     keyUrl: null,
     placeholder: 'http://localhost:11434',
@@ -121,16 +121,16 @@ export default function Settings({ onBack }) {
   };
 
   const tabs = [
-    { key: 'keys', label: '🔑 API-Keys' },
+    { key: 'keys', label: '🔑 API Keys' },
     { key: 'channels', label: '📱 Channels' },
-    { key: 'usage', label: '📊 Verbrauch' },
+    { key: 'usage', label: '📊 Usage' },
     { key: 'system', label: 'ℹ️ System' },
   ];
 
   return (
     <div className="space-y-8 animate-in">
       <div className="flex items-center justify-between">
-        <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>Einstellungen</h2>
+        <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>Settings</h2>
         <button onClick={onBack} className="btn-secondary" style={{ fontSize: 13 }}>← Dashboard</button>
       </div>
 
@@ -143,7 +143,7 @@ export default function Settings({ onBack }) {
       {tab === 'keys' && (
         <div className="space-y-4">
           <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            Verbinde einen KI-Anbieter, damit deine Bots arbeiten können.
+            Connect an AI provider so your bots can work.
           </p>
 
           {PROVIDERS.map(p => {
@@ -171,7 +171,7 @@ export default function Settings({ onBack }) {
                       background: isSet ? 'rgba(52, 199, 89, 0.1)' : 'rgba(142, 142, 147, 0.1)',
                       color: isSet ? '#248A3D' : '#636366',
                     }}>
-                      {isSet ? '✅ Verbunden' : '○ Nicht verbunden'}
+                      {isSet ? '✅ Connected' : '○ Not connected'}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{p.cost}</div>
                   </div>
@@ -189,22 +189,22 @@ export default function Settings({ onBack }) {
                     <div style={{ paddingTop: 16 }}>
                       {!p.isUrl && (
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.6 }}>
-                          <strong>Noch keinen Key?</strong>{' '}
+                          <strong>No key yet?</strong>{' '}
                           <a href={p.signupUrl} target="_blank" rel="noopener" style={{ color: 'var(--accent)' }}>
-                            Account erstellen ↗
+                            Create account ↗
                           </a>
                           {' → '}
                           <a href={p.keyUrl} target="_blank" rel="noopener" style={{ color: 'var(--accent)' }}>
-                            API-Key erstellen ↗
+                            Create API key ↗
                           </a>
                         </div>
                       )}
                       {p.isUrl && (
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.6 }}>
                           <a href={p.signupUrl} target="_blank" rel="noopener" style={{ color: 'var(--accent)' }}>
-                            Ollama herunterladen ↗
+                            Download Ollama ↗
                           </a>
-                          {' — dann hier die URL eingeben:'}
+                          {' — then enter the URL here:'}
                         </div>
                       )}
 
@@ -223,7 +223,7 @@ export default function Settings({ onBack }) {
                           disabled={testing === p.id || !inputs[p.key]}
                           style={{ opacity: testing === p.id ? 0.6 : 1, whiteSpace: 'nowrap' }}
                         >
-                          {testing === p.id ? '⏳ Teste...' : 'Testen & Speichern'}
+                          {testing === p.id ? '⏳ Testing...' : 'Test & Save'}
                         </button>
                       </div>
 
@@ -235,11 +235,11 @@ export default function Settings({ onBack }) {
                         }}>
                           {result.valid ? (
                             <>
-                              ✅ Verbindung erfolgreich!
+                              ✅ Connection successful!
                               {result.models?.length > 0 && (
                                 <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
-                                  Verfügbare Modelle: {result.models.slice(0, 8).join(', ')}
-                                  {result.models.length > 8 && ` +${result.models.length - 8} weitere`}
+                                  Available models: {result.models.slice(0, 8).join(', ')}
+                                  {result.models.length > 8 && ` +${result.models.length - 8} more`}
                                 </div>
                               )}
                             </>
@@ -260,7 +260,7 @@ export default function Settings({ onBack }) {
       {tab === 'channels' && (
         <div className="space-y-6">
           <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            Lass dir Bot-Ergebnisse per Telegram, Webhook oder E-Mail schicken.
+            Get bot results via Telegram, webhook, or email.
           </p>
 
           {/* Existing channels */}
@@ -277,7 +277,7 @@ export default function Settings({ onBack }) {
                     background: ch.status === 'connected' ? 'rgba(52,199,89,0.1)' : 'rgba(255,59,48,0.1)',
                     color: ch.status === 'connected' ? '#248A3D' : '#D70015',
                   }}>
-                    {ch.status === 'connected' ? '✅ Verbunden' : '❌ Fehler'}
+                    {ch.status === 'connected' ? '✅ Connected' : '❌ Error'}
                   </span>
                   <button onClick={async () => {
                     await api.deleteChannel(ch.id);
@@ -293,48 +293,48 @@ export default function Settings({ onBack }) {
 
           {/* Add Telegram */}
           <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>📱 Telegram hinzufügen</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>📱 Add Telegram</h3>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.6 }}>
-              1. Schreibe{' '}
+              1. Message{' '}
               <a href="https://t.me/BotFather" target="_blank" rel="noopener" style={{ color: 'var(--accent)' }}>@BotFather</a>
               {' '}auf Telegram → <code>/newbot</code><br/>
-              2. Du bekommst einen Token (sieht so aus: <code>123456:ABC...</code>)<br/>
-              3. Schreibe deinem neuen Bot eine Nachricht, dann klicke "Chat suchen"
+              2. You'll get a token (looks like: <code>123456:ABC...</code>)<br/>
+              3. Send your new bot a message, then click "Find chat"
             </div>
             <div className="flex gap-2" style={{ marginBottom: 8 }}>
-              <input className="input-apple" placeholder="Bot-Token einfügen..." value={tgToken}
+              <input className="input-apple" placeholder="Paste bot token..." value={tgToken}
                 onChange={e => setTgToken(e.target.value)} style={{ flex: 1 }} />
               <button onClick={findTgChat} className="btn-secondary" disabled={!tgToken || tgSearching}
                 style={{ whiteSpace: 'nowrap', opacity: tgSearching ? 0.6 : 1 }}>
-                {tgSearching ? '⏳ Suche...' : '🔍 Chat suchen'}
+                {tgSearching ? '⏳ Searching...' : '🔍 Find chat'}
               </button>
             </div>
             {tgChat && !tgChat.error && (
               <div className="animate-in flex items-center gap-3" style={{ marginTop: 8 }}>
                 <span style={{ fontSize: 13, color: '#248A3D' }}>
-                  ✅ Chat gefunden: <strong>{tgChat.name}</strong> (ID: {tgChat.chat_id})
+                  ✅ Chat found: <strong>{tgChat.name}</strong> (ID: {tgChat.chat_id})
                 </span>
                 <button onClick={addTelegramChannel} className="btn-primary" style={{ padding: '6px 14px', fontSize: 13 }}>
-                  Speichern
+                  Save
                 </button>
               </div>
             )}
             {tgChat?.error && (
               <div className="animate-in" style={{ fontSize: 13, color: '#D70015', marginTop: 8 }}>
-                ❌ Kein Chat gefunden — schreibe deinem Bot zuerst eine Nachricht auf Telegram
+                ❌ No chat found — send your bot a message on Telegram first
               </div>
             )}
           </div>
 
           {/* Add Webhook */}
           <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>🪝 Webhook hinzufügen</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>🪝 Add Webhook</h3>
             <div className="flex gap-2">
               <input className="input-apple" placeholder="https://example.com/webhook" value={webhookUrl}
                 onChange={e => setWebhookUrl(e.target.value)} style={{ flex: 1 }} />
               <button onClick={addWebhook} className="btn-primary" disabled={!webhookUrl}
                 style={{ whiteSpace: 'nowrap' }}>
-                Speichern
+                Save
               </button>
             </div>
           </div>
@@ -345,10 +345,10 @@ export default function Settings({ onBack }) {
         <div className="space-y-6">
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: 'Runs gesamt', value: usage.total.runs, color: 'var(--accent)' },
-              { label: 'Tokens rein', value: usage.total.tokens_in?.toLocaleString('de-DE') || '0', color: 'var(--purple)' },
-              { label: 'Tokens raus', value: usage.total.tokens_out?.toLocaleString('de-DE') || '0', color: 'var(--warning)' },
-              { label: 'Kosten', value: `$${usage.total.cost?.toFixed(2) || '0.00'}`, color: 'var(--success)' },
+              { label: 'Total runs', value: usage.total.runs, color: 'var(--accent)' },
+              { label: 'Tokens in', value: usage.total.tokens_in?.toLocaleString('en-US') || '0', color: 'var(--purple)' },
+              { label: 'Tokens out', value: usage.total.tokens_out?.toLocaleString('en-US') || '0', color: 'var(--warning)' },
+              { label: 'Cost', value: `$${usage.total.cost?.toFixed(2) || '0.00'}`, color: 'var(--success)' },
             ].map(s => (
               <div key={s.label} className="stat-card">
                 <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
@@ -360,7 +360,7 @@ export default function Settings({ onBack }) {
           {/* Per bot */}
           <div className="card divide-y" style={{ borderColor: 'var(--divider)' }}>
             <div style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
-              Pro Bot
+              Per Bot
             </div>
             {usage.per_bot.map(b => (
               <div key={b.bot_id} className="flex items-center gap-3" style={{ padding: '12px 20px', fontSize: 14 }}>
@@ -368,7 +368,7 @@ export default function Settings({ onBack }) {
                 <span style={{ fontWeight: 500, flex: 1 }}>{b.bot_name}</span>
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{b.runs} Runs</span>
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
-                  {((b.tokens_in || 0) + (b.tokens_out || 0)).toLocaleString('de-DE')} Tokens
+                  {((b.tokens_in || 0) + (b.tokens_out || 0)).toLocaleString('en-US')} Tokens
                 </span>
                 <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--accent)' }}>
                   ${b.cost?.toFixed(4) || '0.00'}
@@ -377,7 +377,7 @@ export default function Settings({ onBack }) {
             ))}
             {usage.per_bot.length === 0 && (
               <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
-                Noch keine Nutzung.
+                No usage yet.
               </div>
             )}
           </div>
@@ -400,10 +400,10 @@ export default function Settings({ onBack }) {
           </div>
 
           <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>System-Status</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>System Status</h3>
             <div className="space-y-3" style={{ fontSize: 14 }}>
               <div className="flex justify-between">
-                <span style={{ color: 'var(--text-secondary)' }}>Datenbank</span>
+                <span style={{ color: 'var(--text-secondary)' }}>Database</span>
                 <span style={{ fontWeight: 500 }}>{system.db_size_mb} MB</span>
               </div>
               <div className="flex justify-between">
@@ -413,28 +413,28 @@ export default function Settings({ onBack }) {
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Scheduler</span>
                 <span style={{ fontWeight: 500, color: '#248A3D' }}>
-                  {system.scheduler_running ? '✅ Aktiv' : '❌ Inaktiv'}
+                  {system.scheduler_running ? '✅ Active' : '❌ Inactive'}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span style={{ color: 'var(--text-secondary)' }}>Verbundene Anbieter</span>
+                <span style={{ color: 'var(--text-secondary)' }}>Connected providers</span>
                 <span style={{ fontWeight: 500 }}>
                   {system.providers_connected?.length > 0
                     ? system.providers_connected.join(', ')
-                    : 'Keine'}
+                    : 'None'}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Tastatur-Kürzel</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Keyboard Shortcuts</h3>
             <div className="space-y-2" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               {[
-                ['⌘/Ctrl + K', 'Suche öffnen'],
-                ['⌘/Ctrl + N', 'Neuer Bot'],
-                ['⌘/Ctrl + ,', 'Einstellungen'],
-                ['ESC', 'Modal schließen'],
+                ['⌘/Ctrl + K', 'Open search'],
+                ['⌘/Ctrl + N', 'New bot'],
+                ['⌘/Ctrl + ,', 'Settings'],
+                ['ESC', 'Close modal'],
               ].map(([key, desc]) => (
                 <div key={key} className="flex justify-between">
                   <span>{desc}</span>

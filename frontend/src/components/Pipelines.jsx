@@ -14,15 +14,15 @@ export default function Pipelines({ bots, onBack }) {
         <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>Pipelines</h2>
         <div className="flex gap-2">
           <button onClick={onBack} className="btn-secondary" style={{ fontSize: 13 }}>← Dashboard</button>
-          <button onClick={() => setShowCreate(true)} className="btn-primary">+ Neue Pipeline</button>
+          <button onClick={() => setShowCreate(true)} className="btn-primary">+ New Pipeline</button>
         </div>
       </div>
 
       {pipelines.length === 0 ? (
         <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
           <p style={{ fontSize: 40, marginBottom: 12 }}>🔗</p>
-          <p style={{ fontSize: 15, fontWeight: 500 }}>Noch keine Pipelines</p>
-          <p style={{ fontSize: 13, marginTop: 4 }}>Verbinde Bots zu automatischen Workflows</p>
+          <p style={{ fontSize: 15, fontWeight: 500 }}>No pipelines yet</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>Connect bots into automated workflows</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -43,11 +43,11 @@ export default function Pipelines({ bots, onBack }) {
 function PipelineCard({ pipeline, bots, onRefresh }) {
   const [running, setRunning] = useState(false);
   const statusColors = {
-    completed: { bg: 'rgba(52,199,89,0.1)', color: '#248A3D', label: 'Fertig' },
-    failed: { bg: 'rgba(255,59,48,0.1)', color: '#D70015', label: 'Fehler' },
-    running: { bg: 'rgba(255,149,0,0.1)', color: '#C93400', label: 'Läuft' },
+    completed: { bg: 'rgba(52,199,89,0.1)', color: '#248A3D', label: 'Done' },
+    failed: { bg: 'rgba(255,59,48,0.1)', color: '#D70015', label: 'Error' },
+    running: { bg: 'rgba(255,149,0,0.1)', color: '#C93400', label: 'Running' },
   };
-  const s = statusColors[pipeline.last_status] || { bg: 'rgba(142,142,147,0.1)', color: '#636366', label: 'Bereit' };
+  const s = statusColors[pipeline.last_status] || { bg: 'rgba(142,142,147,0.1)', color: '#636366', label: 'Ready' };
 
   return (
     <div className="card" style={{ padding: 20 }}>
@@ -63,9 +63,9 @@ function PipelineCard({ pipeline, bots, onRefresh }) {
           <button onClick={async () => { setRunning(true); await api.runPipeline(pipeline.id); setTimeout(() => { setRunning(false); onRefresh(); }, 2000); }}
             className="btn-primary" style={{ padding: '6px 14px', fontSize: 13, opacity: running ? 0.6 : 1 }}
             disabled={running}>
-            {running ? '⏳ Läuft...' : '▶ Starten'}
+            {running ? '⏳ Running...' : '▶ Run'}
           </button>
-          <button onClick={async () => { if(confirm('Pipeline löschen?')) { await api.deletePipeline(pipeline.id); onRefresh(); }}}
+          <button onClick={async () => { if(confirm('Delete pipeline?')) { await api.deletePipeline(pipeline.id); onRefresh(); }}}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--text-tertiary)' }}>
             🗑️
           </button>
@@ -95,7 +95,7 @@ function PipelineCard({ pipeline, bots, onRefresh }) {
 
       {pipeline.error_policy !== 'abort' && (
         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>
-          Bei Fehler: {pipeline.error_policy === 'skip' ? 'Überspringen' : 'Retry'}
+          On error: {pipeline.error_policy === 'skip' ? 'Skip' : 'Retry'}
         </div>
       )}
     </div>
@@ -131,7 +131,7 @@ function CreatePipelineModal({ bots, onClose, onCreate }) {
       <div className="card animate-in" style={{ width: '100%', maxWidth: 520, padding: 28, maxHeight: '90vh', overflowY: 'auto' }}
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700 }}>Neue Pipeline</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700 }}>New Pipeline</h2>
           <button onClick={onClose} style={{
             width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,0.05)',
             border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)',
@@ -146,19 +146,19 @@ function CreatePipelineModal({ bots, onClose, onCreate }) {
               placeholder="Newsletter-Workflow" required />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Beschreibung</label>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Description</label>
             <input className="input-apple" value={description} onChange={e => setDescription(e.target.value)}
               placeholder="Optional..." />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>Schritte</label>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>Steps</label>
             {steps.map((step, i) => (
               <div key={i} className="flex items-center gap-2" style={{ marginBottom: 8 }}>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)', width: 20 }}>{i + 1}.</span>
                 <select className="input-apple" value={step.bot_id}
                   onChange={e => updateStep(i, 'bot_id', e.target.value)} style={{ flex: 1 }} required>
-                  <option value="">Bot wählen...</option>
+                  <option value="">Select bot...</option>
                   {bots.map(b => <option key={b.id} value={b.id}>{b.emoji} {b.name}</option>)}
                 </select>
                 <select className="input-apple" value={step.input_mode}
@@ -177,13 +177,13 @@ function CreatePipelineModal({ bots, onClose, onCreate }) {
             <button type="button" onClick={addStep} style={{
               fontSize: 13, color: 'var(--accent)', background: 'none', border: 'none',
               cursor: 'pointer', padding: '4px 0',
-            }}>+ Schritt hinzufügen</button>
+            }}>+ Add step</button>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Bei Fehler</label>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>On error</label>
             <div className="flex gap-2">
-              {[{ v: 'abort', l: '⛔ Abbrechen' }, { v: 'skip', l: '⏭️ Überspringen' }, { v: 'retry', l: '🔄 Retry' }].map(o => (
+              {[{ v: 'abort', l: '⛔ Abort' }, { v: 'skip', l: '⏭️ Skip' }, { v: 'retry', l: '🔄 Retry' }].map(o => (
                 <button key={o.v} type="button" onClick={() => setErrorPolicy(o.v)} style={{
                   padding: '6px 14px', borderRadius: 10, fontSize: 13, cursor: 'pointer',
                   border: `1px solid ${errorPolicy === o.v ? 'rgba(0,122,255,0.3)' : 'var(--border)'}`,
@@ -195,8 +195,8 @@ function CreatePipelineModal({ bots, onClose, onCreate }) {
           </div>
 
           <div className="flex gap-3" style={{ paddingTop: 8 }}>
-            <button type="button" onClick={onClose} className="btn-secondary" style={{ flex: 1, padding: '12px 18px' }}>Abbrechen</button>
-            <button type="submit" className="btn-primary" style={{ flex: 1, padding: '12px 18px' }}>Pipeline erstellen</button>
+            <button type="button" onClick={onClose} className="btn-secondary" style={{ flex: 1, padding: '12px 18px' }}>Cancel</button>
+            <button type="submit" className="btn-primary" style={{ flex: 1, padding: '12px 18px' }}>Create Pipeline</button>
           </div>
         </form>
       </div>

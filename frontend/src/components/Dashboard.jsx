@@ -14,19 +14,19 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         </h1>
         <p style={{ fontSize: 15, color: 'var(--text-tertiary)', marginTop: 6, fontWeight: 400 }}>
           {bots.length === 0
-            ? 'Erstelle deinen ersten Bot, um loszulegen.'
-            : `${bots.length} Bot${bots.length !== 1 ? 's' : ''} konfiguriert · ${activity.filter(a => a.status === 'completed').length} Runs heute`}
+            ? 'Create your first bot to get started.'
+            : `${bots.length} bot${bots.length !== 1 ? 's' : ''} configured · ${activity.filter(a => a.status === 'completed').length} runs today`}
         </p>
       </div>
 
       {/* Bots */}
       <section style={{ marginBottom: 48 }}>
-        <SectionHeader title="Meine Bots" count={bots.length} />
+        <SectionHeader title="My Bots" count={bots.length} />
         {bots.length === 0 ? (
           <div className="card empty-state">
             <p className="empty-icon">🤖</p>
-            <p className="empty-title">Noch keine Bots erstellt</p>
-            <p className="empty-desc">Klicke auf „+ Neuer Bot" oder wähle eine Vorlage</p>
+            <p className="empty-title">No bots created yet</p>
+            <p className="empty-desc">Click "+ New Bot" or choose a template</p>
           </div>
         ) : (
           <div style={{
@@ -44,7 +44,7 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
       {/* Triggers */}
       {triggers.length > 0 && (
         <section style={{ marginBottom: 48 }}>
-          <SectionHeader title="Verknüpfungen" count={triggers.length} />
+          <SectionHeader title="Connections" count={triggers.length} />
           <div className="card" style={{ overflow: 'hidden' }}>
             {triggers.map((t, i) => {
               const src = bots.find(b => b.id === t.source_bot);
@@ -69,7 +69,7 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
                     <span style={{
                       marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)',
                       background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: 6,
-                    }}>Pausiert</span>
+                    }}>Paused</span>
                   )}
                 </div>
               );
@@ -86,9 +86,9 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
 
 function getGreeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'Guten Morgen';
-  if (h < 18) return 'Guten Tag';
-  return 'Guten Abend';
+  if (h < 12) return 'Good Morning';
+  if (h < 18) return 'Good Afternoon';
+  return 'Good Evening';
 }
 
 function SectionHeader({ title, count }) {
@@ -125,18 +125,18 @@ function Chip({ emoji, label }) {
 function ActivityFeed({ activity, onSelect }) {
   const [expanded, setExpanded] = useState(null);
   const STATUS = {
-    running:   { color: '#C93400', label: 'Läuft', dotClass: 'pulse-dot' },
-    completed: { color: '#248A3D', label: 'Fertig', dotClass: '' },
-    failed:    { color: '#D70015', label: 'Fehler', dotClass: '' },
+    running:   { color: '#C93400', label: 'Running', dotClass: 'pulse-dot' },
+    completed: { color: '#248A3D', label: 'Done', dotClass: '' },
+    failed:    { color: '#D70015', label: 'Error', dotClass: '' },
     timeout:   { color: '#C93400', label: 'Timeout', dotClass: '' },
-    cancelled: { color: 'var(--text-tertiary)', label: 'Abgebrochen', dotClass: '' },
+    cancelled: { color: 'var(--text-tertiary)', label: 'Cancelled', dotClass: '' },
   };
 
   if (activity.length === 0) return null;
 
   return (
     <section>
-      <SectionHeader title="Letzte Aktivität" count={activity.length} />
+      <SectionHeader title="Recent Activity" count={activity.length} />
       <div className="card" style={{ overflow: 'hidden' }}>
         {activity.map((a, i) => {
           const s = STATUS[a.status] || STATUS.cancelled;
@@ -159,7 +159,7 @@ function ActivityFeed({ activity, onSelect }) {
                   width: 44, color: 'var(--text-tertiary)', fontSize: 13,
                   fontVariantNumeric: 'tabular-nums', flexShrink: 0,
                 }}>
-                  {a.started_at ? new Date(a.started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''}
+                  {a.started_at ? new Date(a.started_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
                 </span>
 
                 {/* Bot avatar */}
@@ -214,9 +214,9 @@ function ActivityFeed({ activity, onSelect }) {
                   <div className="log-output" style={{ maxHeight: 256 }}>
                     {a.output || a.output_preview || (
                       <span style={{ fontStyle: 'italic', color: 'var(--text-tertiary)' }}>
-                        {a.status === 'running' ? '⏳ Bot läuft noch...' :
-                         a.status === 'failed' ? '❌ Run fehlgeschlagen.' :
-                         'Kein Ergebnis.'}
+                        {a.status === 'running' ? '⏳ Bot is still running...' :
+                         a.status === 'failed' ? '❌ Run failed.' :
+                         'No result.'}
                       </span>
                     )}
                   </div>
@@ -225,7 +225,7 @@ function ActivityFeed({ activity, onSelect }) {
                     fontSize: 12, color: 'var(--text-tertiary)',
                   }}>
                     {a.duration_ms != null && <span>{(a.duration_ms / 1000).toFixed(1)}s</span>}
-                    {(a.tokens_in || a.tokens_out) ? <span>{((a.tokens_in||0)+(a.tokens_out||0)).toLocaleString('de-DE')} Tokens</span> : null}
+                    {(a.tokens_in || a.tokens_out) ? <span>{((a.tokens_in||0)+(a.tokens_out||0)).toLocaleString('en-US')} Tokens</span> : null}
                     {a.cost_estimate ? <span>${a.cost_estimate.toFixed(4)}</span> : null}
                   </div>
                   {a.error_message && (

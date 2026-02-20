@@ -9,12 +9,14 @@ from typing import List
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import engine, Base, SessionLocal, get_db
-from models import Bot, Run, Result, Trigger, Setting, Pipeline, WaitlistEntry, new_id, utcnow
+from models import Bot, Run, Result, Trigger, Setting, Pipeline, WaitlistEntry, TelegramLink, new_id, utcnow
+import telegram_bot
 from schemas import BotCreate, BotUpdate, BotOut, TriggerCreate, TriggerOut, RunOut, ResultOut
 from bot_runner import run_bot, ws_connections, active_tasks
 from scheduler import init_scheduler, shutdown_scheduler, register_bot, unregister_bot
@@ -33,10 +35,40 @@ run_migrations()
 Base.metadata.create_all(bind=engine)
 
 
+def _on_telegram_link(token, chat_id, username, first_name):
+    """Called by telegram_bot when a user sends /start <token>."""
+    db = SessionLocal()
+    try:
+        link = db.query(TelegramLink).filter(TelegramLink.token == token, TelegramLink.status == "pending").first()
+        if link:
+            link.chat_id = chat_id
+            link.username = username
+            link.first_name = first_name
+            link.status = "connected"
+            link.connected_at = utcnow()
+            db.commit()
+            # Send welcome message
+            import asyncio
+            loop = asyncio.new_event_loop()
+            name = first_name or username or "there"
+            loop.run_until_complete(telegram_bot.send_message(
+                chat_id,
+                f"👋 <b>Hey {name}!</b>\n\n"
+                f"✅ You're connected to openOrchestrator.\n"
+                f"You'll receive bot results right here."
+            ))
+            loop.close()
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app):
     init_scheduler()
+    telegram_bot.set_link_callback(_on_telegram_link)
+    telegram_bot.start()
     yield
+    telegram_bot.stop()
     shutdown_scheduler()
 
 
@@ -489,6 +521,94 @@ def list_templates():
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "openOrchestrator", "version": "0.3.0"}
+
+
+# ── Telegram Connect ─────────────────────────────────────
+
+@app.post("/api/telegram/connect")
+def telegram_start_connect(db: Session = Depends(get_db)):
+    """Generate a link token for Telegram connection."""
+    import secrets
+    token = secrets.token_urlsafe(16)
+    link = TelegramLink(id=new_id(), token=token)
+    db.add(link)
+    db.commit()
+    bot_info = telegram_bot.get_bot_info()
+    bot_username = bot_info["username"] if bot_info else "openorch_bot"
+    deep_link = f"https://t.me/{bot_username}?start={token}"
+    return {"token": token, "deep_link": deep_link, "bot_username": bot_username}
+
+
+@app.get("/api/telegram/qr/{token}")
+def telegram_qr_code(token: str, db: Session = Depends(get_db)):
+    """Generate QR code for the deep link."""
+    link = db.query(TelegramLink).filter(TelegramLink.token == token).first()
+    if not link:
+        raise HTTPException(404, "Token not found")
+    bot_info = telegram_bot.get_bot_info()
+    bot_username = bot_info["username"] if bot_info else "openorch_bot"
+    deep_link = f"https://t.me/{bot_username}?start={token}"
+
+    import qrcode
+    import io
+    qr = qrcode.QRCode(version=1, box_size=8, border=2, error_correction=qrcode.constants.ERROR_CORRECT_M)
+    qr.add_data(deep_link)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="image/png")
+
+
+@app.get("/api/telegram/status/{token}")
+def telegram_check_status(token: str, db: Session = Depends(get_db)):
+    """Poll for connection status."""
+    link = db.query(TelegramLink).filter(TelegramLink.token == token).first()
+    if not link:
+        raise HTTPException(404, "Token not found")
+    return {
+        "status": link.status,
+        "chat_id": link.chat_id,
+        "username": link.username,
+        "first_name": link.first_name,
+        "connected_at": link.connected_at.isoformat() if link.connected_at else None,
+    }
+
+
+@app.get("/api/telegram/connections")
+def telegram_list_connections(db: Session = Depends(get_db)):
+    """List all connected Telegram accounts."""
+    links = db.query(TelegramLink).filter(TelegramLink.status == "connected").order_by(TelegramLink.connected_at.desc()).all()
+    return [{
+        "id": l.id, "chat_id": l.chat_id, "username": l.username,
+        "first_name": l.first_name, "connected_at": l.connected_at.isoformat() if l.connected_at else None,
+    } for l in links]
+
+
+@app.delete("/api/telegram/connections/{link_id}")
+def telegram_disconnect(link_id: str, db: Session = Depends(get_db)):
+    """Remove a Telegram connection."""
+    link = db.query(TelegramLink).filter(TelegramLink.id == link_id).first()
+    if not link:
+        raise HTTPException(404, "Connection not found")
+    db.delete(link)
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/telegram/test/{link_id}")
+async def telegram_test_message(link_id: str, db: Session = Depends(get_db)):
+    """Send a test message to a connected Telegram."""
+    link = db.query(TelegramLink).filter(TelegramLink.id == link_id, TelegramLink.status == "connected").first()
+    if not link:
+        raise HTTPException(404, "Connection not found")
+    result = await telegram_bot.send_message(
+        link.chat_id,
+        "🧪 <b>Test message from openOrchestrator</b>\n\n"
+        "If you see this, notifications are working! ✅"
+    )
+    return {"ok": True, "result": result}
 
 
 # ── Waitlist ─────────────────────────────────────────────

@@ -13,10 +13,10 @@ const MODELS = [
 ];
 
 const TOOLS = [
-  { value: 'web_search', label: '🔍 Web-Suche' },
+  { value: 'web_search', label: '🔍 Web Search' },
   { value: 'browser', label: '🌐 Browser' },
   { value: 'code', label: '💻 Code' },
-  { value: 'files', label: '📁 Dateien' },
+  { value: 'files', label: '📁 Files' },
 ];
 
 export default function NewBotModal({ onClose, onCreate }) {
@@ -30,7 +30,7 @@ export default function NewBotModal({ onClose, onCreate }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card animate-scale" style={{ maxWidth: 480, padding: 28 }} onClick={e => e.stopPropagation()}>
-        <ModalHeader title="Neuer Bot" onClose={onClose} />
+        <ModalHeader title="New Bot" onClose={onClose} />
         <form onSubmit={e => { e.preventDefault(); if(form.name && form.prompt) onCreate({ ...form, description: form.description || form.prompt.slice(0,100), schedule: form.schedule || null }); }}
           className="space-y-5" style={{ marginTop: 20 }}>
           <div className="flex gap-3">
@@ -41,12 +41,12 @@ export default function NewBotModal({ onClose, onCreate }) {
               <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="eBay-Scout" className="input-apple" required />
             </Field>
           </div>
-          <Field label="Beschreibung">
-            <input value={form.description} onChange={e => set('description', e.target.value)} placeholder="Kurze Beschreibung..." className="input-apple" />
+          <Field label="Description">
+            <input value={form.description} onChange={e => set('description', e.target.value)} placeholder="Short description..." className="input-apple" />
           </Field>
-          <Field label="Was soll er tun?">
+          <Field label="What should it do?">
             <textarea value={form.prompt} onChange={e => set('prompt', e.target.value)} rows={3}
-              placeholder="Suche auf eBay nach Nike Air Max unter 50€..." className="input-apple" required />
+              placeholder="Search eBay for Nike Air Max under $50..." className="input-apple" required />
           </Field>
           <Field label="Model">
             <select value={form.model} onChange={e => set('model', e.target.value)} className="input-apple">
@@ -60,12 +60,12 @@ export default function NewBotModal({ onClose, onCreate }) {
               ))}
             </div>
           </Field>
-          <Field label="Zeitplan (Cron, optional)">
+          <Field label="Schedule (Cron, optional)">
             <input value={form.schedule} onChange={e => set('schedule', e.target.value)} placeholder="*/30 * * * *" className="input-apple" style={{ fontFamily: 'SF Mono, Menlo, monospace' }} />
           </Field>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary" style={{ flex: 1, padding: 12 }}>Abbrechen</button>
-            <button type="submit" className="btn-primary" style={{ flex: 1, padding: 12 }}>Bot anlegen</button>
+            <button type="button" onClick={onClose} className="btn-secondary" style={{ flex: 1, padding: 12 }}>Cancel</button>
+            <button type="submit" className="btn-primary" style={{ flex: 1, padding: 12 }}>Create Bot</button>
           </div>
         </form>
       </div>

@@ -84,7 +84,7 @@ export default function App() {
             <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
             <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          <span>Suchen...</span>
+          <span>Search...</span>
           <kbd style={{ fontSize: 10, marginLeft: 'auto', opacity: 0.35, fontFamily: 'inherit' }}>⌘K</kbd>
         </button>
 
@@ -92,7 +92,7 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 200, justifyContent: 'flex-end' }}>
           <button className="icon-btn" data-active={view.page === 'pipelines'} onClick={() => nav('pipelines')} title="Pipelines"
             style={{ width: 34, height: 34, borderRadius: 8, fontSize: 16 }}>🔗</button>
-          <button className="icon-btn" data-active={view.page === 'settings'} onClick={() => nav('settings')} title="Einstellungen"
+          <button className="icon-btn" data-active={view.page === 'settings'} onClick={() => nav('settings')} title="Settings"
             style={{ width: 34, height: 34, borderRadius: 8, fontSize: 16 }}>⚙️</button>
           <button className="icon-btn" onClick={() => setDarkMode(!darkMode)} title={darkMode ? 'Light Mode' : 'Dark Mode'}
             style={{ width: 34, height: 34, borderRadius: 8, fontSize: 16 }}>
@@ -108,10 +108,10 @@ export default function App() {
           }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-          >Vorlagen</button>
+          >Templates</button>
           <button onClick={() => setShowNewBot(true)} className="btn-primary" style={{
             fontSize: 13, padding: '6px 16px', borderRadius: 8, fontWeight: 600,
-          }}>+ Neuer Bot</button>
+          }}>+ New Bot</button>
         </div>
       </header>
 
@@ -127,7 +127,7 @@ export default function App() {
               <path d="M8 1l7 13H1L8 1zm0 4.5v4m0 1.5v1"/>
             </svg>
             <span style={{ color: 'var(--text-secondary)', flex: 1 }}>
-              Kein API-Key konfiguriert — Bots laufen nur im Mock-Modus.
+              No API key configured — bots run in mock mode only.
             </span>
             <button onClick={() => nav('settings')} style={{
               padding: '5px 14px', fontSize: 12, fontWeight: 600,
@@ -138,7 +138,7 @@ export default function App() {
               onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
             >
-              Einrichten
+              Set up
             </button>
           </div>
         </div>

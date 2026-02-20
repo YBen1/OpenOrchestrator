@@ -12,6 +12,18 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 
+class TelegramLink(Base):
+    __tablename__ = "telegram_links"
+    id = Column(String, primary_key=True, default=new_id)
+    token = Column(String, nullable=False, unique=True, index=True)
+    chat_id = Column(String, nullable=True)
+    username = Column(String, nullable=True)
+    first_name = Column(String, nullable=True)
+    status = Column(String, default="pending")  # pending | connected
+    created_at = Column(DateTime, default=utcnow)
+    connected_at = Column(DateTime, nullable=True)
+
+
 class WaitlistEntry(Base):
     __tablename__ = "waitlist"
     id = Column(String, primary_key=True, default=new_id)

@@ -36,9 +36,9 @@ export default function TemplateGallery({ onClose, onCreate }) {
 
         <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
           <div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em' }}>Bot-Vorlagen</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em' }}>Bot Templates</h2>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
-              Wähle eine Vorlage und passe sie an
+              Choose a template and customize it
             </p>
           </div>
           <button onClick={onClose} style={{
@@ -93,13 +93,13 @@ export default function TemplateGallery({ onClose, onCreate }) {
                             fontSize: 11, padding: '2px 8px', borderRadius: 6,
                             background: 'rgba(0,122,255,0.08)', color: 'var(--accent)',
                           }}>
-                            {t === 'web_search' ? '🔍 Web' : t === 'files' ? '📁 Dateien' : t}
+                            {t === 'web_search' ? '🔍 Web' : t === 'files' ? '📁 Files' : t}
                           </span>
                         ))}
                       </div>
                       <button onClick={(e) => { e.stopPropagation(); handleUse(tmpl); }}
                         className="btn-primary" style={{ marginTop: 12, width: '100%', padding: '10px 18px' }}>
-                        Vorlage verwenden
+                        Use Template
                       </button>
                     </div>
                   )}
