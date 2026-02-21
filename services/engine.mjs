@@ -143,10 +143,11 @@ async function handleRun(body) {
 
   const model = getModel(provider, modelId);
 
-  // Build tool list
+  // Build tool list — all tools by default, agent decides what to use
   const toolDefs = [];
   const toolExecutors = {};
-  for (const toolName of enabledTools) {
+  const toolNames = enabledTools?.length > 0 ? enabledTools : Object.keys(AVAILABLE_TOOLS);
+  for (const toolName of toolNames) {
     const tool = AVAILABLE_TOOLS[toolName];
     if (tool) {
       toolDefs.push({
