@@ -229,15 +229,13 @@ def _save_error(run_id, status, error_msg, log_lines, db_factory):
 
 
 async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tuple:
-    """Call LLM with optional tool-calling loop. Returns (output, tokens_in, tokens_out)."""
+    """Execute bot via OpenClaw agent engine. Returns (output, tokens_in, tokens_out)."""
     import json as _json
-    from tools import get_tool_schemas, execute_tool_call
+    import subprocess
 
     db = db_factory()
     try:
-        provider, key = _get_key_for_model(bot.model, db)
         system_prompt = _build_context(bot, db)
-        brave_key = _get_setting(db, "brave_api_key")
     finally:
         db.close()
 
@@ -245,134 +243,71 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
     if input_context:
         user_message = f"Kontext vom vorherigen Schritt:\n\n{input_context}\n\nAufgabe: {bot.prompt}"
 
-    # Parse enabled tools
-    enabled_tools = []
+    # Build the full message with system context
+    full_message = f"[System context: {system_prompt}]\n\n{user_message}"
+
+    # Unique session per bot to maintain context across runs
+    session_id = f"oo-bot-{bot.id}"
+    timeout = bot.max_runtime_seconds if hasattr(bot, 'max_runtime_seconds') and bot.max_runtime_seconds else 120
+
+    await log(f"🚀 OpenClaw Engine ({bot.model or 'default'})...")
+
+    # Build openclaw agent command
+    cmd = [
+        "openclaw", "agent",
+        "--session-id", session_id,
+        "--message", full_message,
+        "--json",
+        "--timeout", str(timeout),
+    ]
+
+    # Run openclaw agent as subprocess
     try:
-        enabled_tools = _json.loads(bot.tools) if bot.tools else []
-    except Exception:
-        pass
-
-    tool_schemas = get_tool_schemas(enabled_tools, brave_key, bot.docs_path) if enabled_tools else []
-
-    if provider == "openai" and key:
-        await log(f"Verwende OpenAI ({bot.model})...")
-        import openai
-        client = openai.AsyncOpenAI(api_key=key)
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ]
-        total_in, total_out = 0, 0
-
-        for iteration in range(10):  # max 10 tool-call rounds
-            kwargs = {"model": bot.model, "messages": messages, "max_tokens": 4000}
-            if tool_schemas and iteration < 8:
-                kwargs["tools"] = tool_schemas
-            resp = await client.chat.completions.create(**kwargs)
-            if resp.usage:
-                total_in += resp.usage.prompt_tokens
-                total_out += resp.usage.completion_tokens
-
-            choice = resp.choices[0]
-            if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
-                messages.append(choice.message)
-                for tc in choice.message.tool_calls:
-                    fn = tc.function.name
-                    args = _json.loads(tc.function.arguments) if tc.function.arguments else {}
-                    await log(f"🔧 Tool: {fn}({', '.join(f'{k}={v!r}' for k,v in args.items())})")
-                    result = await execute_tool_call(fn, args, enabled_tools, brave_key, bot.docs_path)
-                    messages.append({"role": "tool", "tool_call_id": tc.id, "content": result[:4000]})
-            else:
-                return choice.message.content or "", total_in, total_out
-
-        return messages[-1].get("content", "") if isinstance(messages[-1], dict) else "", total_in, total_out
-
-    elif provider == "anthropic" and key:
-        await log(f"Verwende Anthropic ({bot.model})...")
-        import anthropic
-        client = anthropic.AsyncAnthropic(api_key=key)
-
-        # Convert tool schemas to Anthropic format
-        anthro_tools = []
-        for ts in tool_schemas:
-            fn = ts["function"]
-            anthro_tools.append({
-                "name": fn["name"],
-                "description": fn["description"],
-                "input_schema": fn["parameters"],
-            })
-
-        messages = [{"role": "user", "content": user_message}]
-        total_in, total_out = 0, 0
-
-        for iteration in range(10):
-            kwargs = {"model": bot.model, "max_tokens": 4000, "system": system_prompt, "messages": messages}
-            if anthro_tools and iteration < 8:
-                kwargs["tools"] = anthro_tools
-            resp = await client.messages.create(**kwargs)
-            total_in += resp.usage.input_tokens
-            total_out += resp.usage.output_tokens
-
-            if resp.stop_reason == "tool_use":
-                messages.append({"role": "assistant", "content": resp.content})
-                tool_results = []
-                for block in resp.content:
-                    if block.type == "tool_use":
-                        await log(f"🔧 Tool: {block.name}({block.input})")
-                        result = await execute_tool_call(block.name, block.input, enabled_tools, brave_key, bot.docs_path)
-                        tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": result[:4000]})
-                messages.append({"role": "user", "content": tool_results})
-            else:
-                text = ""
-                for block in resp.content:
-                    if hasattr(block, "text"):
-                        text += block.text
-                return text, total_in, total_out
-
-        return "", total_in, total_out
-
-    elif provider == "google" and key:
-        await log(f"Verwende Google Gemini ({bot.model})...")
-        import google.generativeai as genai
-        genai.configure(api_key=key)
-        model = genai.GenerativeModel(bot.model, system_instruction=system_prompt)
-        resp = await asyncio.to_thread(model.generate_content, user_message)
-        tokens_in = resp.usage_metadata.prompt_token_count if hasattr(resp, 'usage_metadata') else 0
-        tokens_out = resp.usage_metadata.candidates_token_count if hasattr(resp, 'usage_metadata') else 0
-        return resp.text, tokens_in, tokens_out
-
-    elif provider == "mistral" and key:
-        await log(f"Verwende Mistral ({bot.model})...")
-        from mistralai import Mistral
-        client = Mistral(api_key=key)
-        resp = await asyncio.to_thread(
-            client.chat.complete, model=bot.model,
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
+        result = await asyncio.to_thread(
+            subprocess.run, cmd,
+            capture_output=True, text=True, timeout=timeout + 10,
         )
-        usage = resp.usage
-        return resp.choices[0].message.content, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0
 
-    elif provider == "ollama":
-        base_url = key if key != "ollama" else "http://localhost:11434"
-        await log(f"Verwende Ollama ({bot.model})...")
-        import openai
-        client = openai.AsyncOpenAI(base_url=f"{base_url}/v1", api_key="ollama")
-        resp = await client.chat.completions.create(
-            model=bot.model,
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
-        )
-        usage = resp.usage
-        return resp.choices[0].message.content, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0
+        if result.returncode != 0:
+            error = result.stderr.strip() or result.stdout.strip() or "Unknown error"
+            await log(f"⚠️ OpenClaw error: {error[:200]}")
+            return f"Fehler: {error[:500]}", 0, 0
 
-    else:
-        await log("⚠️ Kein API-Key konfiguriert — verwende Mock...")
-        await asyncio.sleep(1)
-        return (
-            f"[Mock] Kein API-Key für '{bot.model}' konfiguriert.\n"
-            f"Bitte in den Einstellungen einen Key hinterlegen.\n\n"
-            f"Bot: {bot.name}\nPrompt: {bot.prompt[:200]}",
-            0, 0
-        )
+        # Parse JSON output
+        try:
+            data = _json.loads(result.stdout)
+        except _json.JSONDecodeError:
+            # Might be plain text response
+            return result.stdout.strip()[:4000] or "Keine Antwort", 0, 0
+
+        # Extract text from payloads
+        text_parts = []
+        payloads = data.get("result", {}).get("payloads", [])
+        for p in payloads:
+            if p.get("text"):
+                text_parts.append(p["text"])
+        output = "\n".join(text_parts) or "Keine Antwort"
+
+        # Extract token usage
+        meta = data.get("result", {}).get("meta", {}).get("agentMeta", {})
+        usage = meta.get("usage", {})
+        tokens_in = usage.get("input", 0) + usage.get("cacheRead", 0)
+        tokens_out = usage.get("output", 0)
+        model_used = meta.get("model", bot.model)
+
+        await log(f"📊 Model: {model_used} | Tokens: {tokens_in}→{tokens_out}")
+
+        return output, tokens_in, tokens_out
+
+    except subprocess.TimeoutExpired:
+        await log(f"⏰ OpenClaw Timeout nach {timeout}s")
+        return "Timeout — Bot hat zu lange gebraucht", 0, 0
+    except FileNotFoundError:
+        await log("❌ openclaw CLI nicht gefunden")
+        return "Fehler: openclaw ist nicht installiert", 0, 0
+    except Exception as e:
+        await log(f"❌ Fehler: {e}")
+        return f"Fehler: {str(e)[:500]}", 0, 0
 
 
 async def _check_triggers(source_bot_id: str, event: str, output: str, db_factory):
