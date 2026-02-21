@@ -228,10 +228,86 @@ def _save_error(run_id, status, error_msg, log_lines, db_factory):
         db.close()
 
 
+async def _call_engine(bot: Bot, log, db_factory, input_context: str = None) -> tuple:
+    """Call pi-ai engine service. Returns (output, tokens_in, tokens_out) or None if engine unavailable."""
+    import json as _json
+    import httpx
+
+    ENGINE_URL = os.getenv("ENGINE_URL", "http://127.0.0.1:18800")
+
+    # Check if engine is running
+    try:
+        async with httpx.AsyncClient() as client:
+            health = await client.get(f"{ENGINE_URL}/health", timeout=2)
+            if health.status_code != 200:
+                return None
+    except Exception:
+        return None
+
+    db = db_factory()
+    try:
+        system_prompt = _build_context(bot, db)
+    finally:
+        db.close()
+
+    user_message = bot.prompt
+    if input_context:
+        user_message = f"Kontext vom vorherigen Schritt:\n\n{input_context}\n\nAufgabe: {bot.prompt}"
+
+    # Parse enabled tools
+    enabled_tools = []
+    try:
+        enabled_tools = _json.loads(bot.tools) if bot.tools else []
+    except Exception:
+        pass
+
+    timeout = bot.max_runtime_seconds if hasattr(bot, 'max_runtime_seconds') and bot.max_runtime_seconds else 120
+
+    await log(f"🚀 Engine ({bot.model})...")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(f"{ENGINE_URL}/run", json={
+                "prompt": user_message,
+                "systemPrompt": system_prompt,
+                "model": bot.model,
+                "tools": enabled_tools,
+                "maxTokens": 4000,
+            }, timeout=timeout)
+            data = resp.json()
+
+        if "error" in data:
+            await log(f"⚠️ Engine error: {data['error'][:200]}")
+            return data.get("output", f"Fehler: {data['error']}"), 0, 0
+
+        tokens_in = data.get("tokens_in", 0)
+        tokens_out = data.get("tokens_out", 0)
+        output = data.get("output", "")
+        model_used = data.get("model", bot.model)
+        rounds = data.get("rounds", 1)
+
+        for tl in data.get("tool_log", []):
+            await log(f"🔧 {tl['tool']}({tl.get('args', {})})")
+
+        await log(f"📊 {model_used} | {tokens_in}→{tokens_out} tokens | {rounds} rounds")
+        return output, tokens_in, tokens_out
+
+    except Exception as e:
+        await log(f"⚠️ Engine error: {e}")
+        return None  # Fall back to direct calls
+
+
 async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tuple:
-    """Call LLM with optional tool-calling loop. Returns (output, tokens_in, tokens_out)."""
+    """Call LLM — tries pi-ai engine first, falls back to direct API calls."""
     import json as _json
     from tools import get_tool_schemas, execute_tool_call
+
+    # Try engine first
+    engine_result = await _call_engine(bot, log, db_factory, input_context)
+    if engine_result is not None:
+        return engine_result
+
+    await log("⚡ Direct API mode (engine not available)...")
 
     db = db_factory()
     try:
