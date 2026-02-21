@@ -1,110 +1,172 @@
-## OpenClaw Vision
+# openOrchestrator — Vision
 
-OpenClaw is the AI that actually does things.
-It runs on your devices, in your channels, with your rules.
+## Was ist openOrchestrator?
 
-This document explains the current state and direction of the project.
-We are still early, so iteration is fast.
-Project overview and developer docs: [`README.md`](README.md)
-Contribution guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+Eine **einfache Desktop-App** (später Electron) mit der jeder — ohne technisches Wissen — AI-Bots erstellen, verwalten und automatisieren kann.
 
-OpenClaw started as a personal playground to learn AI and build something genuinely useful:
-an assistant that can run real tasks on a real computer.
-It evolved through several names and shells: Warelay -> Clawdbot -> Moltbot -> OpenClaw.
+**Zielgruppe:** Menschen die ChatGPT kennen, aber nie ein Terminal öffnen würden.
 
-The goal: a personal assistant that is easy to use, supports a wide range of platforms, and respects privacy and security.
+## Kern-Prinzip
 
-The current focus is:
+> **Einfach starten, bei Bedarf erweitern.**
 
-Priority:
+Standard: API-Key eingeben → Bot erstellen → läuft.
+Power-User: Gateways zuschalten für Telegram, WhatsApp, Smart Home, etc.
 
-- Security and safe defaults
-- Bug fixes and stability
-- Setup reliability and first-run UX
+## Architektur
 
-Next priorities:
+```
+┌──────────────────────────────────────────────┐
+│           openOrchestrator UI (React)        │
+│     Einfache, Apple-style Oberfläche         │
+├──────────────────────────────────────────────┤
+│           Bot Engine (Kern)                  │
+│                                              │
+│  ┌─────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │ LLM     │ │ Browser  │ │ Web Search   │  │
+│  │ Runner  │ │ (PW)     │ │ + Fetch      │  │
+│  │ (pi-ai) │ │          │ │              │  │
+│  └─────────┘ └──────────┘ └──────────────┘  │
+│  ┌─────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │ Files   │ │ Image    │ │ Code         │  │
+│  │ R/W     │ │ Vision   │ │ Sandbox      │  │
+│  └─────────┘ └──────────┘ └──────────────┘  │
+├──────────────────────────────────────────────┤
+│        Zuschaltbare Gateways (optional)      │
+│                                              │
+│  ┌────────┐ ┌────────┐ ┌────────┐           │
+│  │Telegram│ │WhatsApp│ │Discord │ ...        │
+│  └────────┘ └────────┘ └────────┘           │
+│  ┌────────┐ ┌────────┐ ┌────────┐           │
+│  │ E-Mail │ │ Nodes  │ │ Slack  │ ...        │
+│  └────────┘ └────────┘ └────────┘           │
+└──────────────────────────────────────────────┘
+```
 
-- Supporting all major model providers
-- Improving support for major messaging channels (and adding a few high-demand ones)
-- Performance and test infrastructure
-- Better computer-use and agent harness capabilities
-- Ergonomics across CLI and web frontend
-- Companion apps on macOS, iOS, Android, Windows, and Linux
+## Kern (immer verfügbar, keine Zusatz-Software)
 
-Contribution rules:
+### LLM Runner
+- Basiert auf **pi-ai** Library (bereits in OpenClaw-Codebase enthalten)
+- Multi-Provider: OpenAI, Anthropic, Google, Mistral, Ollama, AWS Bedrock, Azure, etc.
+- Automatischer Failover wenn ein Provider down ist
+- Token-Tracking & Kosten-Schätzung
+- Tool-Call-Loop (LLM will Tool nutzen → ausführen → Ergebnis zurück → nächste Runde)
+- Context-Window-Management (Compaction wenn Konversation zu lang)
 
-- One PR = one issue/topic. Do not bundle multiple unrelated fixes/features.
-- PRs over ~5,000 changed lines are reviewed only in exceptional circumstances.
-- Do not open large batches of tiny PRs at once; each PR has review cost.
-- For very small related fixes, grouping into one focused PR is encouraged.
+### Browser (Playwright)
+- Bereits in OpenClaw als `src/browser/` implementiert (~15.000 LOC)
+- Eigenständiger HTTP-Server der Playwright/Chromium steuert
+- Braucht KEIN Gateway — läuft als eigener Service
+- Kann: Seiten öffnen, navigieren, Formulare ausfüllen, Screenshots, DOM lesen
+- Headless (Server) oder sichtbar (Desktop/Electron)
+- **Kern-Feature für Agenten** — ein Bot der nicht browsen kann, ist blind
 
-## Security
+### Web Search + Fetch
+- Brave Search API (2.000 Abfragen/Monat kostenlos)
+- URL → Markdown-Extraktion (Readability-Algorithmus)
+- Bereits als `src/agents/tools/web-search.ts` und `web-fetch.ts` vorhanden
+- Kein Gateway nötig — direkte HTTP-Calls
 
-Security in OpenClaw is a deliberate tradeoff: strong defaults without killing capability.
-The goal is to stay powerful for real work while making risky paths explicit and operator-controlled.
+### Dateien
+- Lesen, Schreiben, Bearbeiten im Bot-eigenen Workspace
+- Jeder Bot hat seinen eigenen Docs-Ordner
+- Bereits implementiert
 
-Canonical security policy and reporting:
+### Image/Vision
+- Bilder analysieren via Provider-API (GPT-4o Vision, Claude, Gemini)
+- Bereits als Tool vorhanden
 
-- [`SECURITY.md`](SECURITY.md)
+### Code Sandbox (geplant)
+- Python/JavaScript ausführen in isolierter Umgebung
+- Für Datenanalyse, Berechnungen, Automatisierung
 
-We prioritize secure defaults, but also expose clear knobs for trusted high-power workflows.
+## Zuschaltbare Gateways
 
-## Plugins & Memory
+Gateways sind **optionale Module** die man im UI aktiviert. Jedes Gateway hat:
+- Einen Setup-Wizard mit Schritt-für-Schritt-Anleitung
+- Status-Anzeige (connected/disconnected)
+- Pro-Bot-Konfiguration (welcher Bot nutzt welches Gateway)
 
-OpenClaw has an extensive plugin API.
-Core stays lean; optional capability should usually ship as plugins.
+### Geplante Gateways
 
-Preferred plugin path is npm package distribution plus local extension loading for development.
-If you build a plugin, host and maintain it in your own repository.
-The bar for adding optional plugins to core is intentionally high.
-Plugin docs: [`docs/tools/plugin.md`](docs/tools/plugin.md)
-Community plugin listing + PR bar: https://docs.openclaw.ai/plugins/community
+| Gateway | Funktion | Komplexität |
+|---------|----------|-------------|
+| **Telegram** | Bot antwortet im Telegram-Chat | Einfach (Bot-Token) |
+| **Discord** | Bot als Discord-Bot oder Webhook | Einfach (Webhook-URL) |
+| **Slack** | Incoming Webhook oder Bot | Einfach |
+| **E-Mail** | SMTP senden + IMAP empfangen | Mittel |
+| **Ntfy.sh** | Push-Notifications aufs Handy | Sehr einfach |
+| **WhatsApp** | Via Business API oder Bridge | Komplex |
+| **Nodes** | Smart Home, Remote-Geräte steuern | Komplex |
+| **Webhook** | Beliebige HTTP-Callbacks | Einfach (bereits da) |
 
-Memory is a special plugin slot where only one memory plugin can be active at a time.
-Today we ship multiple memory options; over time we plan to converge on one recommended default path.
+## Was wir von OpenClaw übernehmen
 
-### Skills
+| Komponente | Quelle | Anpassung |
+|---|---|---|
+| LLM Runner + Tool-Loop | `src/agents/pi-embedded-runner/` | Als Node-Service wrappen, von Python aus aufrufen |
+| Browser Control | `src/browser/` | Eigenständig starten, HTTP-API exposed |
+| Web Search | `src/agents/tools/web-search.ts` | Direkt nutzen |
+| Web Fetch | `src/agents/tools/web-fetch.ts` | Direkt nutzen |
+| System Prompt Builder | `src/agents/system-prompt.ts` | Vereinfacht für oO |
+| Model Auth + Fallback | `src/agents/model-auth.ts` | Vereinfacht (UI statt Config-Dateien) |
+| Model Catalog | `src/agents/model-catalog.ts` | Für Model-Dropdown |
+| Tool-Loop-Detection | `src/agents/tool-loop-detection.ts` | Direkt nutzen |
+| Context Compaction | `src/agents/compaction.ts` | Direkt nutzen |
 
-We still ship some bundled skills for baseline UX.
-New skills should be published to ClawHub first (`clawhub.ai`), not added to core by default.
-Core skill additions should be rare and require a strong product or security reason.
+## Was wir NICHT übernehmen (eigene, einfachere Lösung)
 
-### MCP Support
+| Komponente | Warum nicht |
+|---|---|
+| Gateway/Router | Zu komplex — eigenes FastAPI-Backend reicht |
+| Auto-Reply System | Nicht nötig — Bots werden manuell/scheduled getriggert |
+| Session-Management | Einfacher: 1 Bot = 1 Session in SQLite |
+| Channel-Plugins | Eigene simple Webhook/API-Integrationen |
+| Config (YAML) | SQLite + UI statt Textdateien |
+| CLI | Nicht nötig — alles über UI |
+| Native Apps (Swift/Kotlin) | Electron statt native |
+| Pairing/Bonjour | Nicht nötig für v1 |
+| TUI (Terminal UI) | Nicht nötig — Web-UI |
 
-OpenClaw supports MCP through `mcporter`: https://github.com/steipete/mcporter
+## Technischer Plan
 
-This keeps MCP integration flexible and decoupled from core runtime:
+### Phase 1: Kern stärken (aktuell)
+- [x] Bot CRUD, Scheduling, Templates, Dark Mode
+- [x] Multi-Provider LLM (direkte API-Calls)
+- [x] Standard/Advanced UI-Split
+- [x] App-Auth + API-Key-Verschlüsselung
+- [ ] **pi-ai als LLM-Engine** (statt eigener Provider-Calls)
+- [ ] **Browser-Tool** (Playwright als eigener Service)
+- [ ] Web-Search und Web-Fetch als eigenständige Tools
 
-- add or change MCP servers without restarting the gateway
-- keep core tool/context surface lean
-- reduce MCP churn impact on core stability and security
+### Phase 2: Gateways
+- [ ] Gateway-Architektur (Plugin-System)
+- [ ] Telegram Gateway (bidirektional)
+- [ ] Discord Webhook Gateway
+- [ ] E-Mail Gateway (SMTP/IMAP)
+- [ ] Ntfy.sh Push Gateway
 
-For now, we prefer this bridge model over building first-class MCP runtime into core.
-If there is an MCP server or feature `mcporter` does not support yet, please open an issue there.
+### Phase 3: Electron
+- [ ] Electron Shell + Python Sidecar
+- [ ] Browser sichtbar (nicht headless)
+- [ ] OS-Keychain für Secrets
+- [ ] Auto-Updater, Installer
 
-### Setup
+### Phase 4: Community
+- [ ] Skill/Plugin-Marketplace
+- [ ] Bot-Templates Community-Sharing
+- [ ] Self-hosted vs. Cloud Option
 
-OpenClaw is currently terminal-first by design.
-This keeps setup explicit: users see docs, auth, permissions, and security posture up front.
+## Abgrenzung zu OpenClaw
 
-Long term, we want easier onboarding flows as hardening matures.
-We do not want convenience wrappers that hide critical security decisions from users.
+| | OpenClaw | openOrchestrator |
+|---|---|---|
+| **Zielgruppe** | Entwickler, Power-User | Jedermann |
+| **Setup** | CLI, YAML-Config, Terminal | GUI, Klick-Setup |
+| **Interface** | Telegram/WhatsApp/CLI | Web-Dashboard (+ Electron) |
+| **Konfiguration** | Config-Dateien | UI mit Wizards |
+| **Erweiterung** | YAML + TypeScript | GUI + Plugin-Store |
+| **Kern-Engine** | Gleich (pi-ai) | Gleich (pi-ai) |
+| **Tools** | Gleich (Browser, Web, Files) | Gleich (Browser, Web, Files) |
 
-### Why TypeScript?
-
-OpenClaw is primarily an orchestration system: prompts, tools, protocols, and integrations.
-TypeScript was chosen to keep OpenClaw hackable by default.
-It is widely known, fast to iterate in, and easy to read, modify, and extend.
-
-## What We Will Not Merge (For Now)
-
-- New core skills when they can live on ClawHub
-- Full-doc translation sets for all docs (deferred; we plan AI-generated translations later)
-- Commercial service integrations that do not clearly fit the model-provider category
-- Wrapper channels around already supported channels without a clear capability or security gap
-- First-class MCP runtime in core when `mcporter` already provides the integration path
-- Agent-hierarchy frameworks (manager-of-managers / nested planner trees) as a default architecture
-- Heavy orchestration layers that duplicate existing agent and tool infrastructure
-
-This list is a roadmap guardrail, not a law of physics.
-Strong user demand and strong technical rationale can change it.
+openOrchestrator ist die **freundliche Oberfläche** für die gleiche starke Engine.
