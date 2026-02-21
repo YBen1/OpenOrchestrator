@@ -643,3 +643,54 @@ process = await asyncio.create_subprocess_exec(
 | **Context-Window Overflow** | Bot-Docs + letzer Output + Prompt > Model-Limit | Token-Counting vor LLM-Call. Truncation mit Warnung. Später: Chunking/RAG. |
 | **SQLite bei vielen Runs** | Performance ab ~100k Rows | Indizes auf `runs(bot_id, started_at)`, `results(bot_id)`. WAL-Mode. Archivierung alter Runs (>90 Tage → komprimieren). Ausreichend bis ~1M Rows. |
 | **Electron Auto-Update Signing** | Mac erfordert Apple Developer Account ($99/Jahr), Windows empfiehlt Code Signing (~$200/Jahr) | Für Beta: unsigned. Für Launch: Signing kaufen. Mac Gatekeeper umgehbar mit "trotzdem öffnen". |
+
+---
+
+## F. ZUSÄTZLICHE CHANNELS (mit Anleitungen)
+
+**Priorität:** Nach aktuellem Feature-Set, vor Electron.
+
+Alle Channels brauchen:
+- Backend: `send_<channel>()` in `channels.py`
+- Frontend: Wizard mit Schritt-für-Schritt-Anleitung im Channel-Tab (Settings)
+- Pro-Bot-Konfiguration (Checkbox welcher Channel benachrichtigt wird)
+
+### 1. E-Mail (SMTP) — Backend existiert, Frontend fehlt
+- Wizard: SMTP-Host, Port, User, Passwort, Absender eingeben
+- Presets für Gmail (smtp.gmail.com:587 + App-Password-Anleitung), Outlook, Custom
+- Test-Mail senden zur Validierung
+- **Anleitung im Wizard:** "Gmail → Einstellungen → App-Passwörter → Neues erstellen"
+
+### 2. Discord Webhook
+- Wizard: "Server Settings → Integrations → Webhooks → New Webhook → URL kopieren"
+- Backend: POST an Webhook-URL mit Discord-Embed-Format (title, description, color, fields)
+- Anleitung mit Screenshots/Links zum Discord-Docs
+- Test: Embed mit "✅ openOrchestrator verbunden!" senden
+
+### 3. Slack Webhook
+- Wizard: "api.slack.com/apps → Create App → Incoming Webhooks → Activate → URL kopieren"
+- Backend: POST mit Slack Block Kit (sections, mrkdwn)
+- Anleitung: Link zu Slack App creation page
+- Test: Block-Message senden
+
+### 4. Ntfy.sh (Push-Notifications)
+- Wizard: Topic-Name eingeben (z.B. "meine-bots") — kein Account nötig
+- Backend: POST an `https://ntfy.sh/<topic>` mit Title + Message
+- Anleitung: "1. Installiere ntfy App (iOS/Android) 2. Abonniere dein Topic 3. Fertig"
+- Unterstützt auch self-hosted ntfy Server (URL konfigurierbar)
+- **Einfachster Channel** — ideal als Default-Push-Option
+
+### 5. Pushover (später)
+- API-Key + User-Key
+- Guter iOS/Android-Support, Prioritäten, Sounds
+- Anleitung: Account erstellen → App erstellen → Keys kopieren
+
+### 6. Matrix (später, für Self-Hoster)
+- Bot-Account + Room-ID + Homeserver-URL
+- HTTP API, kein SDK nötig
+
+### Nicht geplant (zu komplex für v1):
+- WhatsApp (Meta Business API Approval / Web-Bridge fragil)
+- SMS (Twilio, Kosten)
+- Signal (signal-cli Setup zu komplex für Enduser)
+- Desktop Push (erst mit Electron)
