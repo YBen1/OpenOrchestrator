@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Key, Smartphone, BarChart3, Info, ArrowLeft, CheckCircle2, XCircle, Loader2, ChevronDown, Trash2, Globe, Copy, Search as SearchIcon, AlertTriangle, Server, Shield, Plus, Pencil, Eye, EyeOff } from 'lucide-react';
 import { api } from '../api';
+import { AdvancedSection, useSessionToggle } from './NewBotModal';
 
 const PROVIDERS = [
   {
@@ -63,6 +64,7 @@ export default function Settings({ onBack }) {
   const [testResult, setTestResult] = useState({});
   const [inputs, setInputs] = useState({});
   const [tab, setTab] = useState('keys');
+  const [advancedOpen, setAdvancedOpen] = useSessionToggle('openclaw.settings.advanced', false);
   const [system, setSystem] = useState(null);
   const [channels, setChannels] = useState([]);
   const [tgToken, setTgToken] = useState('');
@@ -80,6 +82,16 @@ export default function Settings({ onBack }) {
     api.getSystem().then(setSystem);
     api.listCredentials().then(setCredentials).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (tab === 'credentials') setAdvancedOpen(true);
+  }, [tab, setAdvancedOpen]);
+
+  useEffect(() => {
+    if (!advancedOpen && tab === 'credentials') {
+      setTab('keys');
+    }
+  }, [advancedOpen, tab]);
 
   const handleTest = async (provider) => {
     const p = PROVIDERS.find(x => x.id === provider);
@@ -107,13 +119,20 @@ export default function Settings({ onBack }) {
     setWebhookUrl('');
   };
 
-  const tabs = [
+  const standardTabs = [
     { key: 'keys', label: 'API Keys', icon: <Key size={15} strokeWidth={1.5} /> },
     { key: 'channels', label: 'Channels', icon: <Smartphone size={15} strokeWidth={1.5} /> },
-    { key: 'credentials', label: 'Credentials', icon: <Shield size={15} strokeWidth={1.5} /> },
     { key: 'usage', label: 'Usage', icon: <BarChart3 size={15} strokeWidth={1.5} /> },
     { key: 'system', label: 'System', icon: <Info size={15} strokeWidth={1.5} /> },
   ];
+
+  const advancedTabs = [
+    { key: 'credentials', label: 'Credentials', icon: <Shield size={15} strokeWidth={1.5} /> },
+  ];
+
+  const tabs = advancedOpen
+    ? [...standardTabs.slice(0, 2), ...advancedTabs, ...standardTabs.slice(2)]
+    : standardTabs;
 
   return (
     <div className="space-y-8 animate-in">
@@ -131,6 +150,21 @@ export default function Settings({ onBack }) {
           </button>
         ))}
       </div>
+
+      <AdvancedSection open={advancedOpen} onToggle={() => setAdvancedOpen(open => !open)}>
+        <div className="flex items-center justify-between" style={{ fontSize: 13, color: 'var(--text-secondary)', gap: 12 }}>
+          <span>Credentials and other advanced options are hidden by default.</span>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ fontSize: 12, padding: '6px 10px' }}
+            onClick={() => setTab('credentials')}
+            disabled={!advancedOpen || tab === 'credentials'}
+          >
+            Credentials
+          </button>
+        </div>
+      </AdvancedSection>
 
       {tab === 'keys' && (
         <div className="space-y-4">
