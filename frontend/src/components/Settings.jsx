@@ -561,6 +561,7 @@ export default function Settings({ onBack }) {
 function TelegramWizard({ onConnected }) {
   const [step, setStep] = useState(0);
   const [token, setToken] = useState('');
+  const [botUsername, setBotUsername] = useState(null);
   const [testing, setTesting] = useState(false);
   const [chatFound, setChatFound] = useState(null);
   const [error, setError] = useState(null);
@@ -712,7 +713,23 @@ function TelegramWizard({ onConnected }) {
               }}>{error}</div>
             )}
             <div style={{ marginTop: 16 }}>
-              <button onClick={() => { if (token.length > 20) { setStep(3); setError(null); } else { setError('Please paste a valid bot token'); } }}
+              <button onClick={async () => {
+                if (token.length > 20) {
+                  setError(null);
+                  // Fetch bot username for the link
+                  try {
+                    const res = await fetch('/api/channels/telegram/bot-info', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include', body: JSON.stringify({ bot_token: token }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setBotUsername(data.username);
+                    }
+                  } catch {}
+                  setStep(3);
+                } else { setError('Please paste a valid bot token'); }
+              }}
                 className="btn-primary" style={{ padding: '10px 20px' }}
                 disabled={token.length < 10}>
                 Next →
@@ -724,7 +741,7 @@ function TelegramWizard({ onConnected }) {
         {step === 3 && (
           <div>
             <div style={{ marginBottom: 16 }}>
-              <a href={`https://t.me/`} target="_blank" rel="noopener"
+              <a href={botUsername ? `https://t.me/${botUsername}` : 'https://t.me/'} target="_blank" rel="noopener"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '10px 18px', borderRadius: 10,

@@ -73,14 +73,30 @@ def delete_channel(channel_id: str, db: Session = Depends(get_db)):
 
 @router.post("/channels/telegram/find-chat")
 async def find_telegram_chat(data: dict):
-    from channels import get_telegram_chat_id
+    from channels import get_telegram_chat_id, get_bot_username
     bot_token = data.get("bot_token", "")
     if not bot_token:
         raise HTTPException(400, "bot_token required")
     result = await get_telegram_chat_id(bot_token)
     if result:
+        # Also include bot username for the link
+        username = await get_bot_username(bot_token)
+        if username:
+            result["bot_username"] = username
         return result
     raise HTTPException(404, "Kein Chat gefunden — schreibe deinem Bot zuerst eine Nachricht auf Telegram")
+
+
+@router.post("/channels/telegram/bot-info")
+async def telegram_bot_info(data: dict):
+    from channels import get_bot_username
+    bot_token = data.get("bot_token", "")
+    if not bot_token:
+        raise HTTPException(400, "bot_token required")
+    username = await get_bot_username(bot_token)
+    if username:
+        return {"username": username}
+    raise HTTPException(400, "Invalid bot token")
 
 
 @router.post("/channels/{channel_id}/test")

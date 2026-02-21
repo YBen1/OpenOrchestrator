@@ -46,10 +46,16 @@ async def send_email(smtp_host: str, smtp_port: int, smtp_user: str, smtp_pass: 
 async def get_telegram_chat_id(bot_token: str) -> Optional[dict]:
     """Get the most recent chat from getUpdates."""
     async with httpx.AsyncClient() as client:
+        # First, delete any webhook that might block getUpdates
+        await client.post(
+            f"https://api.telegram.org/bot{bot_token}/deleteWebhook",
+            timeout=10,
+        )
+        # Now fetch updates
         resp = await client.get(
             f"https://api.telegram.org/bot{bot_token}/getUpdates",
-            params={"limit": 5, "offset": -5},
-            timeout=10,
+            params={"limit": 10, "timeout": 3},
+            timeout=15,
         )
         data = resp.json()
         if not data.get("ok") or not data.get("result"):
@@ -61,9 +67,19 @@ async def get_telegram_chat_id(bot_token: str) -> Optional[dict]:
             if chat.get("id"):
                 return {
                     "chat_id": str(chat["id"]),
-                    "name": chat.get("first_name", "") + " " + chat.get("last_name", ""),
+                    "name": (chat.get("first_name", "") + " " + chat.get("last_name", "")).strip(),
                     "username": chat.get("username", ""),
                 }
+    return None
+
+
+async def get_bot_username(bot_token: str) -> Optional[str]:
+    """Get the bot's username via getMe."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=10)
+        data = resp.json()
+        if data.get("ok"):
+            return data["result"].get("username")
     return None
 
 
