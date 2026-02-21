@@ -26,13 +26,37 @@ from migrations import run_migrations
 from routers.settings import router as settings_router
 from routers.channels_router import router as channels_router
 from routers.pipelines_router import router as pipelines_router
+from routers.auth_router import router as auth_router
+from config import Config
+from crypto import init_crypto, is_initialized as crypto_initialized
+from auth import require_auth
 
-BOT_DATA = os.getenv("BOT_DATA_PATH", "/srv/openOrchestrator/bot-data")
+BOT_DATA = Config.BOT_DATA_PATH
 
 # ── Startup ───────────────────────────────────────────────
 
+# Init encryption before anything else
+init_crypto(key_file=Config.MASTER_KEY_FILE)
+
 run_migrations()
 Base.metadata.create_all(bind=engine)
+
+# Auto-migrate plaintext keys to encrypted
+def _migrate_plaintext_keys():
+    from crypto import encrypt, is_encrypted
+    from routers.settings import SENSITIVE_KEYS
+    db = SessionLocal()
+    try:
+        for key in SENSITIVE_KEYS:
+            s = db.query(Setting).get(key)
+            if s and s.value and not is_encrypted(s.value):
+                s.value = encrypt(s.value)
+        db.commit()
+    finally:
+        db.close()
+
+if crypto_initialized():
+    _migrate_plaintext_keys()
 
 
 def _on_telegram_link(token, chat_id, username, first_name):
@@ -79,7 +103,30 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
-# Include routers
+# Auth middleware — protect all /api/* routes except auth endpoints
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse as StarletteJSONResponse
+
+AUTH_EXEMPT = {"/api/auth/status", "/api/auth/login", "/api/auth/setup", "/api/health"}
+
+# WebSocket paths are exempt from HTTP auth middleware (handled separately if needed)
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        if path.startswith("/api/") and path not in AUTH_EXEMPT and request.method != "OPTIONS" and not path.startswith("/ws/"):
+            from auth import validate_session
+            token = request.cookies.get("session") or request.headers.get("X-Session-Token")
+            if not token or not validate_session(token):
+                return StarletteJSONResponse({"detail": "Not authenticated"}, status_code=401)
+        return await call_next(request)
+
+app.add_middleware(AuthMiddleware)
+
+# Auth router — no auth required for login/setup/status
+app.include_router(auth_router)
+
+# Protected routers (auth handled by middleware)
 app.include_router(settings_router)
 app.include_router(channels_router)
 app.include_router(pipelines_router)

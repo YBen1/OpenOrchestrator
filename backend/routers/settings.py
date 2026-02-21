@@ -5,10 +5,21 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Setting, utcnow
+from crypto import encrypt, decrypt
 
 router = APIRouter(prefix="/api", tags=["settings"])
 
 SENSITIVE_KEYS = {"openai_api_key", "anthropic_api_key", "google_api_key", "mistral_api_key", "brave_api_key"}
+
+
+def get_decrypted_setting(db: Session, key: str) -> str | None:
+    """Get a setting value, decrypting if it's a sensitive key."""
+    s = db.query(Setting).get(key)
+    if not s or not s.value:
+        return None
+    if key in SENSITIVE_KEYS:
+        return decrypt(s.value)
+    return s.value
 
 
 @router.get("/settings")
@@ -16,8 +27,11 @@ def get_settings(db: Session = Depends(get_db)):
     settings = db.query(Setting).all()
     result = {}
     for s in settings:
+        if s.key.startswith("_"):
+            continue  # Skip internal keys
         if s.key in SENSITIVE_KEYS and s.value:
-            result[s.key] = "•" * 20 + s.value[-4:] if len(s.value) > 4 else s.value
+            plain = decrypt(s.value)
+            result[s.key] = "•" * 20 + plain[-4:] if len(plain) > 4 else plain
             result[f"{s.key}_set"] = True
         else:
             result[s.key] = s.value
@@ -33,12 +47,13 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
     for key, value in data.settings.items():
         if value and "•" in str(value):
             continue
+        store_value = encrypt(str(value)) if key in SENSITIVE_KEYS else str(value)
         existing = db.query(Setting).get(key)
         if existing:
-            existing.value = str(value)
+            existing.value = store_value
             existing.updated_at = utcnow()
         else:
-            db.add(Setting(key=key, value=str(value)))
+            db.add(Setting(key=key, value=store_value))
     db.commit()
     return {"ok": True}
 

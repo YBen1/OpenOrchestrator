@@ -36,8 +36,11 @@ async def broadcast(bot_id: str, message: dict):
 
 
 def _get_setting(db, key: str) -> Optional[str]:
+    from crypto import decrypt
     s = db.query(Setting).get(key)
-    return s.value if s else None
+    if not s or not s.value:
+        return None
+    return decrypt(s.value)
 
 
 def _get_key_for_model(model: str, db) -> tuple:

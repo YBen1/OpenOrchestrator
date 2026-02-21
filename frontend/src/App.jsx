@@ -10,8 +10,10 @@ import Pipelines from './components/Pipelines';
 import SearchModal from './components/Search';
 import TemplateGallery from './components/TemplateGallery';
 import Onboarding from './components/Onboarding';
+import Login from './components/Login';
 
 export default function App() {
+  const [authState, setAuthState] = useState(null); // null=loading, 'login', 'setup', 'ok'
   const [bots, setBots] = useState([]);
   const [view, setView] = useState({ page: 'dashboard' });
   const [showNewBot, setShowNewBot] = useState(false);
@@ -23,6 +25,22 @@ export default function App() {
   const [triggers, setTriggers] = useState([]);
   const [hasKeys, setHasKeys] = useState(true);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
+  // Check auth on mount
+  useEffect(() => {
+    fetch('/api/auth/status', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.setup_required) setAuthState('setup');
+        else {
+          // Try fetching a protected route to check session
+          fetch('/api/bots', { credentials: 'include' })
+            .then(r => { setAuthState(r.ok ? 'ok' : 'login'); })
+            .catch(() => setAuthState('login'));
+        }
+      })
+      .catch(() => setAuthState('login'));
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -54,6 +72,16 @@ export default function App() {
   useEffect(() => { refresh(); checkKeys(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, []);
 
   const nav = (page) => setView({ page });
+
+  // Auth gate
+  if (authState === null) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+      <div style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Loading...</div>
+    </div>;
+  }
+  if (authState === 'login' || authState === 'setup') {
+    return <Login setupRequired={authState === 'setup'} onSuccess={() => { setAuthState('ok'); refresh(); checkKeys(); }} />;
+  }
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
