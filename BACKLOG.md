@@ -694,3 +694,14 @@ Alle Channels brauchen:
 - SMS (Twilio, Kosten)
 - Signal (signal-cli Setup zu komplex für Enduser)
 - Desktop Push (erst mit Electron)
+
+### 7. Interaktiver Telegram-Bot (bidirektional)
+- Aktuell: Telegram ist nur Notification-Channel (one-way, sendet Ergebnisse)
+- Ziel: Bot soll auf Nachrichten reagieren können
+  - `/start` → Begrüßung + Verbindungsbestätigung
+  - `/run <botname>` → Bot manuell starten
+  - `/status` → Übersicht laufende Bots
+  - `/results` → Letzte Ergebnisse
+  - Freitext → an einen konfigurierten "Chat-Bot" weiterleiten
+- Braucht: Polling-Loop oder Webhook-Empfang im Backend
+- Wichtig: Wizard sollte nach Verbindung direkt "✅ Verbunden!" im Chat bestätigen
