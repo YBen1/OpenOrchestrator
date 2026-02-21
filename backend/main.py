@@ -35,6 +35,18 @@ BOT_DATA = Config.BOT_DATA_PATH
 
 # ── Startup ───────────────────────────────────────────────
 
+# Auto-upgrade dependencies on start (non-blocking, best-effort)
+import subprocess, sys
+try:
+    req_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "requirements.txt")
+    if os.path.exists(req_file):
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--upgrade", "-q", "-r", req_file, "--break-system-packages"],
+            timeout=60, capture_output=True,
+        )
+except Exception:
+    pass  # Don't block startup if upgrade fails
+
 # Init encryption before anything else
 init_crypto(key_file=Config.MASTER_KEY_FILE)
 

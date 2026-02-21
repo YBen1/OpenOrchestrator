@@ -1,21 +1,21 @@
 # openOrchestrator — Python dependencies
-# Use: pip install -r requirements.txt
+# No pinned versions — always pulls latest stable from PyPI
 
 # Core
-fastapi>=0.110
-uvicorn>=0.29
-sqlalchemy>=2.0
-httpx>=0.27
-cryptography>=41
+fastapi
+uvicorn
+sqlalchemy
+httpx
+cryptography
 
-# LLM Providers (install as needed)
-openai>=2.0
-anthropic>=0.30
-google-generativeai>=0.7
-mistralai>=1.0
+# LLM Providers
+openai
+anthropic
+google-generativeai
+mistralai
 
 # Channels
-aiosmtplib>=3.0
+aiosmtplib
 
 # Scheduling
-apscheduler>=3.10
+apscheduler
