@@ -186,11 +186,8 @@ export default function Settings({ onBack }) {
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.01)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  {p.isOllama ? (
-                    <Server size={28} strokeWidth={1.5} style={{ color: p.color, flexShrink: 0 }} />
-                  ) : (
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-                  )}
+                  <img src={`/logos/${p.id}.svg`} alt={p.name} style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 6 }}
+                    onError={e => { e.target.style.display = 'none'; }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{p.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{p.models}</div>
