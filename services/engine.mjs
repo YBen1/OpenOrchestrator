@@ -37,36 +37,116 @@ async function executeWebFetch(args) {
   const { url, maxChars = 10000 } = args;
   try {
     const resp = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; openOrchestrator/1.0)" },
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+      },
       signal: AbortSignal.timeout(15000),
+      redirect: "follow",
     });
     const text = await resp.text();
-    // Simple HTML → text extraction
+    // HTML → text extraction
     const clean = text
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
+      .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<[^>]+>/g, "\n")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\n\s*\n/g, "\n")
+      .replace(/[ \t]+/g, " ")
       .trim()
       .slice(0, maxChars);
-    return { content: clean, url, length: clean.length };
+    return { content: clean, url, length: clean.length, status: resp.status };
   } catch (e) {
     return { error: e.message };
   }
 }
 
+// Browser via Playwright — built-in, no external server needed
+let _browser = null;
+async function getBrowser() {
+  if (_browser) {
+    return _browser;
+  }
+  const pw = await import("playwright-core");
+  const execPath =
+    process.env.BROWSER_EXECUTABLE ||
+    "/root/.cache/ms-playwright/chromium-1208/chrome-linux64/chrome";
+  _browser = await pw.chromium.launch({
+    executablePath: execPath,
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+  return _browser;
+}
+
 async function executeBrowserAction(args) {
-  const browserPort = parseInt(process.env.BROWSER_PORT || "18791");
+  const { url } = args;
+  if (!url) {
+    return { error: "url is required" };
+  }
   try {
-    const resp = await fetch(`http://127.0.0.1:${browserPort}/api/browser`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(args),
-      signal: AbortSignal.timeout(30000),
+    const browser = await getBrowser();
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.waitForTimeout(2000);
+
+    // Try to dismiss cookie banners
+    try {
+      const cookieBtn = await page.$(
+        'button:has-text("Alle akzeptieren"), button:has-text("Accept All"), #onetrust-accept-btn-handler',
+      );
+      if (cookieBtn) {
+        await cookieBtn.click().catch(() => {});
+      }
+      await page.waitForTimeout(1000);
+    } catch {}
+
+    const text = await page.evaluate(() => {
+      // Try to extract main content area only
+      const main = document.querySelector(
+        "main, [role='main'], .srp-results, #srp-river-results, .s-main-slot, #mainContent, article, .content",
+      );
+      const target = main || document.body;
+      target
+        .querySelectorAll(
+          "script,style,nav,header,footer,iframe,noscript,[role='banner'],[role='navigation']",
+        )
+        .forEach((el) => el.remove());
+      return target.innerText || document.body?.innerText || "";
     });
-    return await resp.json();
+    await page.close();
+    return { content: text.slice(0, 8000), url, length: text.length };
   } catch (e) {
-    return { error: `Browser not available: ${e.message}` };
+    return { error: `Browser error: ${e.message}` };
+  }
+}
+
+async function executeExec(args) {
+  const { command, timeoutMs = 30000 } = args;
+  const { execSync } = await import("node:child_process");
+  try {
+    const output = execSync(command, {
+      timeout: timeoutMs,
+      maxBuffer: 1024 * 1024,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return { stdout: output.slice(0, 10000) };
+  } catch (e) {
+    return {
+      stdout: (e.stdout || "").slice(0, 5000),
+      stderr: (e.stderr || "").slice(0, 2000),
+      exitCode: e.status,
+    };
   }
 }
 
@@ -74,7 +154,8 @@ async function executeBrowserAction(args) {
 const AVAILABLE_TOOLS = {
   web_search: {
     name: "web_search",
-    description: "Search the web using Brave Search API. Returns titles, URLs, and snippets.",
+    description:
+      "Search the web using Brave Search API. Returns titles, URLs, and snippets. Requires BRAVE_API_KEY. If unavailable, use web_fetch to visit URLs directly instead.",
     parameters: Type.Object({
       query: Type.String({ description: "Search query" }),
       count: Type.Optional(Type.Number({ description: "Number of results (1-10)", default: 5 })),
@@ -83,7 +164,8 @@ const AVAILABLE_TOOLS = {
   },
   web_fetch: {
     name: "web_fetch",
-    description: "Fetch and extract readable text content from a URL.",
+    description:
+      "Fetch and extract readable text content from any URL. Use this to visit websites directly, read articles, check prices, scrape pages. No API key needed.",
     parameters: Type.Object({
       url: Type.String({ description: "URL to fetch" }),
       maxChars: Type.Optional(
@@ -92,17 +174,22 @@ const AVAILABLE_TOOLS = {
     }),
     execute: executeWebFetch,
   },
+  exec: {
+    name: "exec",
+    description:
+      "Execute a shell command. Use for: curl, data processing, file operations, running scripts. Returns stdout/stderr.",
+    parameters: Type.Object({
+      command: Type.String({ description: "Shell command to execute" }),
+      timeoutMs: Type.Optional(Type.Number({ description: "Timeout in ms", default: 30000 })),
+    }),
+    execute: executeExec,
+  },
   browser: {
     name: "browser",
     description:
-      "Control a web browser. Can navigate to URLs, click elements, fill forms, take screenshots, and read page content.",
+      "Open a real web browser (Chrome) to visit a URL and read the fully rendered page content including JavaScript. Use for dynamic sites like eBay, Amazon, social media.",
     parameters: Type.Object({
-      action: Type.String({
-        description: "Action: navigate, snapshot, screenshot, click, type, scroll",
-      }),
-      url: Type.Optional(Type.String({ description: "URL to navigate to" })),
-      selector: Type.Optional(Type.String({ description: "CSS selector for element" })),
-      text: Type.Optional(Type.String({ description: "Text to type" })),
+      url: Type.String({ description: "URL to visit and read" }),
     }),
     execute: executeBrowserAction,
   },
@@ -144,9 +231,14 @@ async function handleRun(body) {
   const model = getModel(provider, modelId);
 
   // Build tool list — all tools by default, agent decides what to use
+  // Skip web_search if no BRAVE_API_KEY (avoids wasting a round on a tool that will fail)
   const toolDefs = [];
   const toolExecutors = {};
-  const toolNames = enabledTools?.length > 0 ? enabledTools : Object.keys(AVAILABLE_TOOLS);
+  const allTools = Object.keys(AVAILABLE_TOOLS);
+  const toolNames =
+    enabledTools?.length > 0
+      ? enabledTools
+      : allTools.filter((t) => t !== "web_search" || process.env.BRAVE_API_KEY);
   for (const toolName of toolNames) {
     const tool = AVAILABLE_TOOLS[toolName];
     if (tool) {
@@ -195,28 +287,27 @@ async function handleRun(body) {
       };
     }
 
-    // Execute tool calls
+    // Execute tool calls and add results per pi-ai format
     context.messages.push({ role: "assistant", content: response.content });
-    const toolResults = [];
     for (const tc of toolCalls) {
       const executor = toolExecutors[tc.name];
+      let resultText;
       if (executor) {
         toolLog.push({ tool: tc.name, args: tc.arguments });
         const result = await executor(tc.arguments || {});
-        toolResults.push({
-          type: "toolResult",
-          toolCallId: tc.toolCallId,
-          content: JSON.stringify(result).slice(0, 8000),
-        });
+        resultText = JSON.stringify(result).slice(0, 8000);
       } else {
-        toolResults.push({
-          type: "toolResult",
-          toolCallId: tc.toolCallId,
-          content: `Unknown tool: ${tc.name}`,
-        });
+        resultText = `Unknown tool: ${tc.name}`;
       }
+      context.messages.push({
+        role: "toolResult",
+        toolCallId: tc.id,
+        toolName: tc.name,
+        content: [{ type: "text", text: resultText }],
+        isError: false,
+        timestamp: Date.now(),
+      });
     }
-    context.messages.push({ role: "user", content: toolResults });
   }
 
   return {
