@@ -50,8 +50,9 @@
       display: flex; align-items: center; gap: 10px;
       font-size: 16px; font-weight: 700; letter-spacing: -0.02em;
       text-decoration: none; color: var(--text);
+      flex-shrink: 0; white-space: nowrap;
     }
-    .nav-logo img { width: 28px; height: 28px; border-radius: 7px; }
+    .nav-logo img { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; }
     .nav-links { display: flex; gap: 4px; align-items: center; }
     .nav-links a {
       font-size: 14px; font-weight: 500; color: var(--text-secondary);
@@ -260,7 +261,7 @@
 
   <nav>
     <a href="/" class="nav-logo">
-      <img src="/logo.png" alt="openOrchestrator">
+      <img src="/logo-sm.png" alt="openOrchestrator">
       openOrchestrator
     </a>
     <div class="nav-links">
