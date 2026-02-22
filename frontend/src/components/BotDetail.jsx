@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Play, Pencil, Download, BarChart3, Trash2, RefreshCw, FileText, Copy } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { api, connectWs } from '../api';
 
 export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
@@ -121,7 +122,9 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
                     {r.created_at ? new Date(r.created_at).toLocaleString('en-US') : ''}
                   </span>
                 </div>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{r.content}</p>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }} className="markdown-content">
+                  <ReactMarkdown components={{ a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--blue)', textDecoration: 'underline' }} /> }}>{r.content}</ReactMarkdown>
+                </div>
               </div>
             ))}
           </div>

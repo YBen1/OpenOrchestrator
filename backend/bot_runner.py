@@ -171,6 +171,7 @@ async def run_bot(bot: Bot, run: Run, db_factory, input_context: str = None):
 
             await broadcast(bot.id, {"type": "status", "bot_id": bot.id, "status": "completed"})
             await broadcast(bot.id, {"type": "run_complete", "run_id": run.id, "status": "completed"})
+            await _notify_channels(bot, "completed", output, tokens_in + tokens_out if tokens_in and tokens_out else 0, cost, db_factory)
             await _check_triggers(bot.id, "completed", output, db_factory)
 
         except asyncio.TimeoutError:
@@ -449,6 +450,45 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
             f"Bot: {bot.name}\nPrompt: {bot.prompt[:200]}",
             0, 0
         )
+
+
+async def _notify_channels(bot, status: str, output: str, total_tokens: int, cost: float, db_factory):
+    """Send result to all linked channels."""
+    from models import BotChannel, Channel
+    from channels import send_telegram, send_webhook, format_notification
+    import json as _json
+
+    db = db_factory()
+    try:
+        links = db.query(BotChannel).filter(BotChannel.bot_id == bot.id).all()
+        if not links:
+            return
+
+        for link in links:
+            if link.notify_rule == "never":
+                continue
+            if link.notify_rule == "on_error" and status == "completed":
+                continue
+
+            ch = db.query(Channel).get(link.channel_id)
+            if not ch or ch.status != "connected":
+                continue
+
+            cfg = _json.loads(ch.config)
+            msg = format_notification(bot.name, bot.emoji, status, output, tokens=total_tokens)
+
+            try:
+                if ch.type == "telegram":
+                    await send_telegram(cfg.get("bot_token"), cfg.get("chat_id"), msg)
+                elif ch.type == "webhook":
+                    await send_webhook(cfg.get("url", ""), {
+                        "bot": bot.name, "status": status, "output": output[:4000],
+                        "tokens": total_tokens, "cost": cost,
+                    })
+            except Exception:
+                pass  # Don't fail the run for notification errors
+    finally:
+        db.close()
 
 
 async def _check_triggers(source_bot_id: str, event: str, output: str, db_factory):

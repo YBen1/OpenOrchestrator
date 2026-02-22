@@ -1,7 +1,8 @@
-import { Search, Globe, Code, FolderOpen } from "lucide-react";
+import { Search, Globe, Code, FolderOpen, Send } from "lucide-react";
 import { useState, useEffect } from "react";
 import { SIMPLE_MODELS, SIMPLE_MODEL_VALUES, GroupedModelOptions } from "./modelCatalog.jsx";
 import { ModalHeader, Field, ToolChip, AdvancedSection, useSessionToggle } from "./NewBotModal";
+import { api } from "../api";
 
 const SIMPLE_SCHEDULES = [
   { label: "Manual", value: "" },
@@ -82,6 +83,27 @@ export default function EditBotModal({ bot, onClose, onSave }) {
     });
   };
 
+  // Load channels and bot-channel links
+  const [channels, setChannels] = useState([]);
+  const [botChannels, setBotChannels] = useState([]);
+
+  useEffect(() => {
+    api.getChannels().then(setChannels).catch(() => {});
+    api.getBotChannels(bot.id).then(setBotChannels).catch(() => {});
+  }, [bot.id]);
+
+  const toggleChannel = (channelId) => {
+    setBotChannels(prev => {
+      const existing = prev.find(c => c.channel_id === channelId);
+      if (existing) return prev.filter(c => c.channel_id !== channelId);
+      return [...prev, { channel_id: channelId, notify_rule: 'always' }];
+    });
+  };
+
+  const setChannelRule = (channelId, rule) => {
+    setBotChannels(prev => prev.map(c => c.channel_id === channelId ? { ...c, notify_rule: rule } : c));
+  };
+
   const simpleModelOptions = SIMPLE_MODEL_VALUES.has(form.model)
     ? SIMPLE_MODELS
     : [...SIMPLE_MODELS, { value: form.model, label: `Advanced: ${form.model}` }];
@@ -95,9 +117,10 @@ export default function EditBotModal({ bot, onClose, onSave }) {
       >
         <ModalHeader title="Edit Bot" onClose={onClose} />
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             if (form.name && form.prompt) {
+              await api.updateBotChannels(bot.id, botChannels).catch(() => {});
               onSave({ ...form, schedule: form.schedule || null });
             }
           }}
@@ -246,6 +269,41 @@ export default function EditBotModal({ bot, onClose, onSave }) {
                   max={600}
                 />
               </Field>
+              {channels.length > 0 && (
+                <Field label="Output Channel">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {channels.filter(c => c.status === 'connected').map(ch => {
+                      const linked = botChannels.find(bc => bc.channel_id === ch.id);
+                      return (
+                        <div key={ch.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <button type="button" onClick={() => toggleChannel(ch.id)} style={{
+                            display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px',
+                            borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                            border: '1px solid', transition: 'all 0.15s ease', flex: 1,
+                            background: linked ? 'var(--accent-soft)' : 'transparent',
+                            borderColor: linked ? 'var(--accent)' : 'var(--border)',
+                            color: linked ? 'var(--accent)' : 'var(--text-tertiary)',
+                          }}>
+                            <Send size={12} /> {ch.name || ch.type}
+                          </button>
+                          {linked && (
+                            <select value={linked.notify_rule} onChange={e => setChannelRule(ch.id, e.target.value)}
+                              style={{ fontSize: 11, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+                              <option value="always">Immer</option>
+                              <option value="on_new">Nur bei neuem Output</option>
+                              <option value="on_error">Nur bei Fehler</option>
+                              <option value="never">Nie</option>
+                            </select>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                    Ergebnisse automatisch an verbundene Channels senden
+                  </div>
+                </Field>
+              )}
             </div>
           </AdvancedSection>
 
