@@ -53,10 +53,11 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
             <ArrowLeft size={18} strokeWidth={1.5} />
           </button>
           <div style={{
-            width: 52, height: 52, borderRadius: 14, background: 'var(--bg-tertiary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
+            width: 52, height: 52, borderRadius: 14, background: 'var(--accent-soft)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, fontWeight: 700, color: 'var(--accent)',
             boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)',
-          }}>{bot.emoji}</div>
+          }}>{(bot.name || '?')[0].toUpperCase()}</div>
           <div>
             <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>{bot.name}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{bot.description || bot.prompt}</p>

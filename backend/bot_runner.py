@@ -161,7 +161,7 @@ async def run_bot(bot: Bot, run: Run, db_factory, input_context: str = None):
 
                 result = Result(
                     id=new_id(), bot_id=bot.id, run_id=run.id,
-                    title=f"{bot.emoji} {bot.name} — Ergebnis",
+                    title=f"{bot.name} — Result",
                     content=output,
                 )
                 db.add(result)

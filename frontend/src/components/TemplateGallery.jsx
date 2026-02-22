@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Search, FolderOpen, Clock } from 'lucide-react';
+import { X, Search, FolderOpen, Clock, FileText, Globe, Mail, FlaskConical, TrendingDown, Newspaper, Code2, Microscope, Server, Languages } from 'lucide-react';
 import { api } from '../api';
 
 export default function TemplateGallery({ onClose, onCreate }) {
@@ -15,7 +15,6 @@ export default function TemplateGallery({ onClose, onCreate }) {
   const handleUse = (tmpl) => {
     onCreate({
       name: tmpl.name,
-      emoji: tmpl.emoji,
       description: tmpl.description,
       prompt: tmpl.prompt,
       model: tmpl.model,
@@ -24,9 +23,23 @@ export default function TemplateGallery({ onClose, onCreate }) {
     });
   };
 
-  const TOOL_LABELS = {
-    web_search: 'Web',
-    files: 'Files',
+  const ICON_MAP = {
+    'search': Search,
+    'file-text': FileText,
+    'languages': Languages,
+    'mail': Mail,
+    'microscope': Microscope,
+    'trending-down': TrendingDown,
+    'newspaper': Newspaper,
+    'code': Code2,
+    'server': Server,
+    'globe': Globe,
+  };
+
+  const getTemplateIcon = (tmpl) => {
+    const IconComp = ICON_MAP[tmpl.icon];
+    if (IconComp) return <IconComp size={20} strokeWidth={1.5} />;
+    return <span style={{ fontSize: 14, fontWeight: 700 }}>{(tmpl.name || '?')[0].toUpperCase()}</span>;
   };
 
   return (
@@ -48,7 +61,7 @@ export default function TemplateGallery({ onClose, onCreate }) {
             </p>
           </div>
           <button onClick={onClose} style={{
-            width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,0.05)',
+            width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-tertiary)',
             border: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}><X size={14} strokeWidth={1.5} /></button>
@@ -64,15 +77,19 @@ export default function TemplateGallery({ onClose, onCreate }) {
                 <div key={tmpl.id}
                   className="hover-lift cursor-pointer"
                   style={{
-                    background: selected === tmpl.id ? 'rgba(0, 122, 255, 0.04)' : 'var(--bg)',
-                    border: `1px solid ${selected === tmpl.id ? 'rgba(0, 122, 255, 0.3)' : 'var(--border)'}`,
+                    background: selected === tmpl.id ? 'var(--accent-soft)' : 'var(--bg-tertiary)',
+                    border: `1px solid ${selected === tmpl.id ? 'rgba(230, 57, 70, 0.3)' : 'var(--border)'}`,
                     borderRadius: 14, padding: 16,
                     transition: 'all 0.15s ease',
                   }}
                   onClick={() => setSelected(selected === tmpl.id ? null : tmpl.id)}
                 >
                   <div className="flex items-center gap-3" style={{ marginBottom: 8 }}>
-                    <span style={{ fontSize: 24 }}>{tmpl.emoji}</span>
+                    <span style={{
+                      width: 36, height: 36, borderRadius: 10, background: 'var(--accent-soft)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: 'var(--accent)', flexShrink: 0,
+                    }}>{getTemplateIcon(tmpl)}</span>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{tmpl.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -87,7 +104,7 @@ export default function TemplateGallery({ onClose, onCreate }) {
                   {selected === tmpl.id && (
                     <div className="animate-in">
                       <div style={{
-                        background: 'white', borderRadius: 10, padding: 12, marginBottom: 12,
+                        background: 'var(--bg-primary)', borderRadius: 10, padding: 12, marginBottom: 12,
                         fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5,
                         fontFamily: 'SF Mono, Menlo, monospace', whiteSpace: 'pre-wrap',
                       }}>
@@ -97,7 +114,7 @@ export default function TemplateGallery({ onClose, onCreate }) {
                         {tmpl.tools.map(t => (
                           <span key={t} style={{
                             fontSize: 11, padding: '2px 8px', borderRadius: 6,
-                            background: 'rgba(0,122,255,0.08)', color: 'var(--accent)',
+                            background: 'var(--accent-soft)', color: 'var(--accent)',
                             display: 'inline-flex', alignItems: 'center', gap: 4,
                           }}>
                             {t === 'web_search' ? <><Search size={10} strokeWidth={2} /> Web</> : t === 'files' ? <><FolderOpen size={10} strokeWidth={2} /> Files</> : t}

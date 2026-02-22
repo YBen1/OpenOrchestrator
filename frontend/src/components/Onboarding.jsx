@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Zap, Key, CheckCircle2, XCircle, Loader2, ArrowRight, Check } from 'lucide-react';
+import { Key, CheckCircle2, XCircle, Loader2, ArrowRight, Check } from 'lucide-react';
 import { api } from '../api';
 
 const PROVIDERS = [

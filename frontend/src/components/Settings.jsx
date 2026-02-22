@@ -7,7 +7,7 @@ const PROVIDERS = [
   {
     id: 'openai', name: 'OpenAI', color: '#10a37f', key: 'openai_api_key',
     models: 'GPT-5, GPT-4.1, o4-mini',
-    cost: 'ab ~$5/Mo',
+    cost: 'from ~$5/mo',
     signupUrl: 'https://platform.openai.com/signup',
     keyUrl: 'https://platform.openai.com/api-keys',
     placeholder: 'sk-...',
@@ -15,7 +15,7 @@ const PROVIDERS = [
   {
     id: 'anthropic', name: 'Anthropic', color: '#7c3aed', key: 'anthropic_api_key',
     models: 'Claude Sonnet, Haiku, Opus',
-    cost: 'ab ~$5/Mo',
+    cost: 'from ~$5/mo',
     signupUrl: 'https://console.anthropic.com',
     keyUrl: 'https://console.anthropic.com/settings/keys',
     placeholder: 'sk-ant-...',
@@ -31,7 +31,7 @@ const PROVIDERS = [
   {
     id: 'mistral', name: 'Mistral', color: '#f97316', key: 'mistral_api_key',
     models: 'Mistral Large, Small',
-    cost: 'ab ~$2/Mo',
+    cost: 'from ~$2/mo',
     signupUrl: 'https://console.mistral.ai',
     keyUrl: 'https://console.mistral.ai/api-keys',
     placeholder: '...',
@@ -45,9 +45,9 @@ const PROVIDERS = [
     placeholder: 'BSA...',
   },
   {
-    id: 'ollama', name: 'Lokal (Ollama)', color: '#8b5cf6', key: 'ollama_base_url',
+    id: 'ollama', name: 'Local (Ollama)', color: '#8b5cf6', key: 'ollama_base_url',
     models: 'Llama, Mistral, Phi local',
-    cost: 'Costlos',
+    cost: 'Free',
     signupUrl: 'https://ollama.com/download',
     keyUrl: null,
     placeholder: 'http://localhost:11434',
@@ -468,7 +468,11 @@ export default function Settings({ onBack }) {
             </div>
             {usage.per_bot.map(b => (
               <div key={b.bot_id} className="flex items-center gap-3" style={{ padding: '12px 20px', fontSize: 14 }}>
-                <span>{b.bot_emoji}</span>
+                <span style={{
+                  width: 24, height: 24, borderRadius: 7, background: 'var(--accent-soft)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
+                }}>{(b.bot_name || '?')[0].toUpperCase()}</span>
                 <span style={{ fontWeight: 500, flex: 1 }}>{b.bot_name}</span>
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{b.runs} Runs</span>
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>

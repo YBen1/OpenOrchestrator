@@ -54,7 +54,7 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
                   fontSize: 14,
                   borderTop: i > 0 ? '1px solid var(--divider)' : 'none',
                 }}>
-                  <Chip emoji={src?.emoji} label={src?.name || t.source_bot} />
+                  <Chip label={src?.name || t.source_bot} />
                   <span style={{
                     color: 'var(--text-quaternary)', fontSize: 11, fontWeight: 600,
                     letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -62,7 +62,7 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
                     <path d="M3 8h10M10 5l3 3-3 3" stroke="var(--text-quaternary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <Chip emoji={tgt?.emoji} label={tgt?.name || t.target_bot} />
+                  <Chip label={tgt?.name || t.target_bot} />
                   {!t.enabled && (
                     <span style={{
                       marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)',
@@ -107,14 +107,19 @@ function SectionHeader({ title, count }) {
   );
 }
 
-function Chip({ emoji, label }) {
+function Chip({ label }) {
+  const initial = (label || '?')[0].toUpperCase();
   return (
     <span style={{
       background: 'var(--bg-tertiary)', borderRadius: 10, padding: '6px 12px',
       display: 'inline-flex', alignItems: 'center', gap: 6,
       fontSize: 13, fontWeight: 500, color: 'var(--text-primary)',
     }}>
-      <span style={{ fontSize: 14 }}>{emoji || <Bot size={14} strokeWidth={1.5} />}</span>{label}
+      <span style={{
+        width: 20, height: 20, borderRadius: 6, background: 'var(--accent-soft)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+      }}>{initial}</span>{label}
     </span>
   );
 }
@@ -160,10 +165,10 @@ function ActivityFeed({ activity, onSelect }) {
 
                 <span style={{
                   width: 30, height: 30, borderRadius: 9,
-                  background: 'var(--bg-tertiary)',
+                  background: 'var(--accent-soft)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 15, flexShrink: 0,
-                }}>{a.bot_emoji}</span>
+                  fontSize: 13, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
+                }}>{(a.bot_name || '?')[0].toUpperCase()}</span>
 
                 <span
                   style={{

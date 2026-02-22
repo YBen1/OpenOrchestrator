@@ -45,10 +45,10 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
         <div style={{
           width: 44, height: 44, borderRadius: 12,
-          background: 'var(--bg-tertiary)',
+          background: 'var(--accent-soft)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22, flexShrink: 0,
-        }}>{bot.emoji}</div>
+          fontSize: 18, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
+        }}>{(bot.name || '?')[0].toUpperCase()}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <h3 style={{

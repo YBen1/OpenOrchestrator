@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Zap, Search, Link, Settings as SettingsIcon, Moon, Sun } from 'lucide-react';
+import { Search, Link, Settings as SettingsIcon, Moon, Sun } from 'lucide-react';
 import { api } from './api';
 import Dashboard from './components/Dashboard';
 import BotDetail from './components/BotDetail';
@@ -24,7 +24,7 @@ export default function App() {
   const [activity, setActivity] = useState([]);
   const [triggers, setTriggers] = useState([]);
   const [hasKeys, setHasKeys] = useState(true);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light');
 
   // Check auth on mount
   useEffect(() => {
@@ -88,12 +88,7 @@ export default function App() {
       {/* Header */}
       <header className="header-bar" style={{ padding: '0 24px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', minWidth: 200 }} onClick={() => nav('dashboard')}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: 'linear-gradient(135deg, #007AFF 0%, #5856D6 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white',
-          }}><Zap size={16} strokeWidth={2} /></div>
+          <img src="/logo.png" alt="openOrchestrator" style={{ width: 28, height: 28, borderRadius: 6 }} />
           <span style={{ fontSize: 15, fontWeight: 650, letterSpacing: '-0.02em' }}>openOrchestrator</span>
         </div>
 

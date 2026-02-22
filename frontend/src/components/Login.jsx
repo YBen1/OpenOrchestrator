@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export default function Login({ setupRequired, onSuccess }) {
   const [password, setPassword] = useState('');
@@ -50,7 +50,7 @@ export default function Login({ setupRequired, onSuccess }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'var(--bg)',
+      background: 'var(--bg-primary)',
       padding: 20,
     }}>
       <div style={{
@@ -63,14 +63,10 @@ export default function Login({ setupRequired, onSuccess }) {
         boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 16,
-            background: 'var(--accent-soft)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px',
-          }}>
-            <Lock size={28} strokeWidth={1.5} color="var(--accent)" />
-          </div>
+          <img src="/logo.png" alt="openOrchestrator" style={{
+            width: 80, height: 80, borderRadius: 18,
+            margin: '0 auto 16px', display: 'block',
+          }} />
           <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 6px' }}>
             {isSetup ? 'Set Password' : 'openOrchestrator'}
           </h1>
