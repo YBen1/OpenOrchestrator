@@ -269,8 +269,8 @@ export default function EditBotModal({ bot, onClose, onSave }) {
                   max={600}
                 />
               </Field>
-              {channels.length > 0 && (
-                <Field label="Output Channel">
+              <Field label="Output Channel">
+                {channels.filter(c => c.status === 'connected').length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {channels.filter(c => c.status === 'connected').map(ch => {
                       const linked = botChannels.find(bc => bc.channel_id === ch.id);
@@ -289,21 +289,30 @@ export default function EditBotModal({ bot, onClose, onSave }) {
                           {linked && (
                             <select value={linked.notify_rule} onChange={e => setChannelRule(ch.id, e.target.value)}
                               style={{ fontSize: 11, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-                              <option value="always">Immer</option>
-                              <option value="on_new">Nur bei neuem Output</option>
-                              <option value="on_error">Nur bei Fehler</option>
-                              <option value="never">Nie</option>
+                              <option value="always">Always</option>
+                              <option value="on_new">New output only</option>
+                              <option value="on_error">On error only</option>
+                              <option value="never">Never</option>
                             </select>
                           )}
                         </div>
                       );
                     })}
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                      Automatically send results to connected channels
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                    Ergebnisse automatisch an verbundene Channels senden
+                ) : (
+                  <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                      No channels connected yet
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                      Add Telegram or a webhook in <strong>Settings → Channels</strong> to receive bot results on your phone.
+                    </div>
                   </div>
-                </Field>
-              )}
+                )}
+              </Field>
             </div>
           </AdvancedSection>
 
