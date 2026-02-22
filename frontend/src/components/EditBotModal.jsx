@@ -89,7 +89,14 @@ export default function EditBotModal({ bot, onClose, onSave }) {
 
   useEffect(() => {
     api.getChannels().then(setChannels).catch(() => {});
-    api.getBotChannels(bot.id).then(setBotChannels).catch(() => {});
+    api.getBotChannels(bot.id).then(links => {
+      setBotChannels(links);
+      // Pre-select the first linked channel in the dropdown
+      if (links.length > 0) {
+        set('output_channel', links[0].channel_id);
+        set('notify_rule', links[0].notify_rule || 'always');
+      }
+    }).catch(() => {});
   }, [bot.id]);
 
   const toggleChannel = (channelId) => {
@@ -120,8 +127,14 @@ export default function EditBotModal({ bot, onClose, onSave }) {
           onSubmit={async (e) => {
             e.preventDefault();
             if (form.name && form.prompt) {
-              await api.updateBotChannels(bot.id, botChannels).catch(() => {});
-              onSave({ ...form, schedule: form.schedule || null });
+              // Save channel link
+              const channelLinks = [];
+              if (form.output_channel && form.output_channel !== 'none' && !form.output_channel?.startsWith('__')) {
+                channelLinks.push({ channel_id: form.output_channel, notify_rule: form.notify_rule || 'always' });
+              }
+              await api.updateBotChannels(bot.id, channelLinks).catch(() => {});
+              const { output_channel, notify_rule, _tg_token, _tg_chat, _webhook_url, ...saveData } = form;
+              onSave({ ...saveData, schedule: saveData.schedule || null });
             }
           }}
           className="space-y-5"
@@ -270,47 +283,65 @@ export default function EditBotModal({ bot, onClose, onSave }) {
                 />
               </Field>
               <Field label="Output Channel">
-                {channels.filter(c => c.status === 'connected').length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {channels.filter(c => c.status === 'connected').map(ch => {
-                      const linked = botChannels.find(bc => bc.channel_id === ch.id);
-                      return (
-                        <div key={ch.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <button type="button" onClick={() => toggleChannel(ch.id)} style={{
-                            display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px',
-                            borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                            border: '1px solid', transition: 'all 0.15s ease', flex: 1,
-                            background: linked ? 'var(--accent-soft)' : 'transparent',
-                            borderColor: linked ? 'var(--accent)' : 'var(--border)',
-                            color: linked ? 'var(--accent)' : 'var(--text-tertiary)',
-                          }}>
-                            <Send size={12} /> {ch.name || ch.type}
-                          </button>
-                          {linked && (
-                            <select value={linked.notify_rule} onChange={e => setChannelRule(ch.id, e.target.value)}
-                              style={{ fontSize: 11, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-                              <option value="always">Always</option>
-                              <option value="on_new">New output only</option>
-                              <option value="on_error">On error only</option>
-                              <option value="never">Never</option>
-                            </select>
-                          )}
-                        </div>
-                      );
-                    })}
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                      Automatically send results to connected channels
-                    </div>
+                <select value={form.output_channel || 'none'} onChange={e => set('output_channel', e.target.value)} className="input-apple">
+                  <option value="none">None — Results only in dashboard</option>
+                  {channels.map(ch => (
+                    <option key={ch.id} value={ch.id}>{ch.type === 'telegram' ? 'Telegram' : ch.type === 'webhook' ? 'Webhook' : ch.type}: {ch.name}</option>
+                  ))}
+                  <option value="__new_telegram__">+ Add Telegram</option>
+                  <option value="__new_webhook__">+ Add Webhook</option>
+                </select>
+
+                {form.output_channel === '__new_telegram__' && (
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <input className="input-apple" placeholder="Telegram Bot Token (from @BotFather)"
+                      value={form._tg_token || ''} onChange={e => set('_tg_token', e.target.value)}
+                      style={{ fontFamily: 'SF Mono, Menlo, monospace', fontSize: 12 }} />
+                    <input className="input-apple" placeholder="Chat ID (send /start to your bot, then click Find)"
+                      value={form._tg_chat || ''} onChange={e => set('_tg_chat', e.target.value)} />
+                    <button type="button" onClick={async () => {
+                      if (!form._tg_token) return;
+                      try {
+                        const chat = await api.findTelegramChat(form._tg_token);
+                        if (chat?.chat_id) {
+                          set('_tg_chat', String(chat.chat_id));
+                          const ch = await api.createChannel({ type: 'telegram', name: `Telegram: ${chat.name}`, config: { bot_token: form._tg_token, chat_id: chat.chat_id } });
+                          const updated = await api.getChannels();
+                          setChannels(updated);
+                          const newCh = updated.find(c => c.type === 'telegram');
+                          if (newCh) set('output_channel', newCh.id);
+                        }
+                      } catch { alert('No chat found — send your bot a message first.'); }
+                    }} className="btn-primary" style={{ alignSelf: 'flex-start', fontSize: 12, padding: '6px 14px' }}>
+                      Find Chat & Connect
+                    </button>
                   </div>
-                ) : (
-                  <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                      No channels connected yet
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                      Add Telegram or a webhook in <strong>Settings → Channels</strong> to receive bot results on your phone.
-                    </div>
+                )}
+
+                {form.output_channel === '__new_webhook__' && (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                    <input className="input-apple" placeholder="https://example.com/webhook"
+                      value={form._webhook_url || ''} onChange={e => set('_webhook_url', e.target.value)} style={{ flex: 1 }} />
+                    <button type="button" onClick={async () => {
+                      if (!form._webhook_url) return;
+                      const ch = await api.createChannel({ type: 'webhook', name: 'Webhook', config: { url: form._webhook_url } });
+                      const updated = await api.getChannels();
+                      setChannels(updated);
+                      const newCh = updated.find(c => c.type === 'webhook');
+                      if (newCh) set('output_channel', newCh.id);
+                    }} className="btn-primary" style={{ fontSize: 12, padding: '6px 14px', whiteSpace: 'nowrap' }}>
+                      Save
+                    </button>
                   </div>
+                )}
+
+                {form.output_channel && form.output_channel !== 'none' && !form.output_channel.startsWith('__') && (
+                  <select value={form.notify_rule || 'always'} onChange={e => set('notify_rule', e.target.value)}
+                    className="input-apple" style={{ marginTop: 6 }}>
+                    <option value="always">Send always</option>
+                    <option value="on_new">Only new output</option>
+                    <option value="on_error">Only on error</option>
+                  </select>
                 )}
               </Field>
             </div>
