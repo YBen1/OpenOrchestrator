@@ -303,10 +303,17 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
     import json as _json
     from tools import get_tool_schemas, execute_tool_call
 
-    # Try engine first
-    engine_result = await _call_engine(bot, log, db_factory, input_context)
-    if engine_result is not None:
-        return engine_result
+    # Try engine first (only if no tools enabled — engine doesn't support tool calls yet)
+    import json as _json2
+    enabled_tools = []
+    try:
+        enabled_tools = _json2.loads(bot.tools) if bot.tools else []
+    except Exception:
+        pass
+    if not enabled_tools:
+        engine_result = await _call_engine(bot, log, db_factory, input_context)
+        if engine_result is not None:
+            return engine_result
 
     await log("⚡ Direct API mode (engine not available)...")
 
@@ -342,7 +349,9 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
         total_in, total_out = 0, 0
 
         for iteration in range(10):  # max 10 tool-call rounds
-            kwargs = {"model": bot.model, "messages": messages, "max_tokens": 4000}
+            # GPT-5/o-series use max_completion_tokens, older models use max_tokens
+            token_key = "max_completion_tokens" if bot.model.startswith(("gpt-5", "o1", "o3", "o4")) else "max_tokens"
+            kwargs = {"model": bot.model, "messages": messages, token_key: 4000}
             if tool_schemas and iteration < 8:
                 kwargs["tools"] = tool_schemas
             resp = await client.chat.completions.create(**kwargs)
@@ -352,7 +361,8 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
 
             choice = resp.choices[0]
             if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
-                messages.append(choice.message)
+                # Convert to dict to avoid pydantic serialization issues
+                messages.append(choice.message.model_dump())
                 for tc in choice.message.tool_calls:
                     fn = tc.function.name
                     args = _json.loads(tc.function.arguments) if tc.function.arguments else {}

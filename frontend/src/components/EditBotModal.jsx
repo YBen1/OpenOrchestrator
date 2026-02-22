@@ -95,7 +95,7 @@ export default function EditBotModal({ bot, onClose, onSave }) {
   const toggleChannel = (channelId) => {
     setBotChannels(prev => {
       const existing = prev.find(c => c.channel_id === channelId);
-      if (existing) return prev.filter(c => c.channel_id !== channelId);
+      if (existing) {return prev.filter(c => c.channel_id !== channelId);}
       return [...prev, { channel_id: channelId, notify_rule: 'always' }];
     });
   };

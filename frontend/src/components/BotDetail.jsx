@@ -22,14 +22,14 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
   useEffect(() => { load(); }, [botId]);
   useEffect(() => {
     const ws = connectWs(botId, (msg) => {
-      if (msg.type === 'log') setLogs(prev => [...prev, msg.line]);
-      if (msg.type === 'run_complete') load();
+      if (msg.type === 'log') {setLogs(prev => [...prev, msg.line]);}
+      if (msg.type === 'run_complete') {load();}
     });
     return () => ws.close();
   }, [botId]);
-  useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [logs]);
+  useEffect(() => { if (logRef.current) {logRef.current.scrollTop = logRef.current.scrollHeight;} }, [logs]);
 
-  if (!bot) return <div className="empty-state"><div className="empty-title">Loading...</div></div>;
+  if (!bot) {return <div className="empty-state"><div className="empty-title">Loading...</div></div>;}
 
   const stats = {
     runs: runs.length,
