@@ -21,6 +21,21 @@ const CATEGORIES = [
       "money",
     ],
   },
+  {
+    name: "Characters",
+    emojis: [
+      "security",
+      "fashion",
+      "scientist",
+      "recorder",
+      "rocket",
+      "dj",
+      "driving",
+      "cinema",
+      "wizard",
+      "scooter",
+    ],
+  },
 ];
 
 export default function EmojiPicker({ value, onChange, onClose }) {
