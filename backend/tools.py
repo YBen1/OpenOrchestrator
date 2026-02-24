@@ -179,40 +179,91 @@ class CodeTool:
 
 
 class BrowserTool:
-    """Fetch a URL and return readable content."""
+    """Real browser via Playwright — navigates, renders JS, extracts content."""
     name = "browser"
 
     schema = {
         "type": "function",
         "function": {
             "name": "fetch_url",
-            "description": "Fetch a URL and return the readable text content (HTML converted to plain text). Use for reading web pages, APIs, etc.",
+            "description": "Open a URL in a real browser (with JavaScript), wait for it to load, and return the visible text content. Works with sites that block simple HTTP requests (e.g. eBay, Amazon). For search result pages, returns item titles, prices, and links.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "url": {"type": "string", "description": "URL to fetch (http or https)"},
+                    "url": {"type": "string", "description": "URL to open in the browser (http or https)"},
                 },
                 "required": ["url"],
             },
         },
     }
 
+    _browser = None
+    _context = None
+
+    @classmethod
+    async def _get_context(cls):
+        if cls._context is None:
+            from playwright.async_api import async_playwright
+            cls._pw = await async_playwright().start()
+            cls._browser = await cls._pw.chromium.launch(headless=True, args=["--no-sandbox"])
+            cls._context = await cls._browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 800},
+                locale="de-DE",
+            )
+        return cls._context
+
     async def execute(self, url: str) -> str:
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
-                resp = await client.get(url, timeout=20, headers={"User-Agent": "openOrchestrator/1.0"})
-                content_type = resp.headers.get("content-type", "")
-                text = resp.text[:8000]
-                if "html" in content_type:
-                    # Simple HTML to text
-                    import re
-                    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL)
-                    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL)
-                    text = re.sub(r'<[^>]+>', ' ', text)
-                    text = re.sub(r'\s+', ' ', text).strip()
-                return text[:6000] if text else "(Leere Antwort)"
+            context = await self._get_context()
+            page = await context.new_page()
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                # Dismiss cookie banners
+                for sel in ["#gdpr-banner-accept", "[data-testid='uc-accept-all-button']",
+                            "button:has-text('Alle akzeptieren')", "button:has-text('Accept all')",
+                            "#consent-page .btn--primary"]:
+                    try:
+                        btn = page.locator(sel).first
+                        if await btn.is_visible(timeout=2000):
+                            await btn.click()
+                            await page.wait_for_timeout(1000)
+                            break
+                    except:
+                        continue
+                await page.wait_for_timeout(2000)
+                # Extract visible text content
+                text = await page.evaluate("""() => {
+                    // Try to get structured data from eBay-like listings
+                    const items = document.querySelectorAll('[data-viewport], .s-item, .srp-results li');
+                    if (items.length > 2) {
+                        const results = [];
+                        items.forEach(item => {
+                            const links = item.querySelectorAll('a[href*="/itm/"]');
+                            const priceEl = item.querySelector('[class*="price"]');
+                            for (const a of links) {
+                                const title = a.innerText.trim().replace(/\\n.*/, '');
+                                if (title.length > 5 && !title.includes('Shop on eBay')) {
+                                    results.push(
+                                        title +
+                                        (priceEl ? ' — ' + priceEl.textContent.trim() : '') +
+                                        '\\n' + a.href.split('?')[0]
+                                    );
+                                    break;
+                                }
+                            }
+                        });
+                        if (results.length > 0) return results.join('\\n\\n');
+                    }
+                    // Fallback: readable text
+                    const body = document.body.innerText;
+                    return body.substring(0, 8000);
+                }""")
+                return text[:6000] if text else "(Leere Seite)"
+            finally:
+                await page.close()
         except Exception as e:
-            return f"Fehler beim Abruf: {e}"
+            return f"Browser-Fehler: {e}"
 
 
 def get_tool_schemas(enabled_tools: list, brave_key: str = None, docs_path: str = None) -> list:
