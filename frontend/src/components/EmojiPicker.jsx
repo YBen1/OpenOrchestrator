@@ -63,7 +63,7 @@ export default function EmojiPicker({ value, onChange, onClose }) {
           background: "var(--bg-secondary)",
           border: "1px solid var(--border)",
           borderRadius: 12,
-          width: 380,
+          width: 480,
           maxHeight: "70vh",
           display: "flex",
           flexDirection: "column",
@@ -122,8 +122,8 @@ export default function EmojiPicker({ value, onChange, onClose }) {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(7, 1fr)",
-                    gap: 4,
+                    gridTemplateColumns: "repeat(6, 1fr)",
+                    gap: 6,
                   }}
                 >
                   {filtered.map((emoji) => (
@@ -135,9 +135,9 @@ export default function EmojiPicker({ value, onChange, onClose }) {
                       }}
                       title={emoji}
                       style={{
-                        width: 48,
-                        height: 48,
-                        padding: 4,
+                        width: 68,
+                        height: 68,
+                        padding: 6,
                         background: value === emoji ? "var(--accent-soft)" : "transparent",
                         border:
                           value === emoji ? "2px solid var(--accent)" : "2px solid transparent",
@@ -164,7 +164,7 @@ export default function EmojiPicker({ value, onChange, onClose }) {
                       <img
                         src={`/emojis/${emoji}.png`}
                         alt={emoji}
-                        style={{ width: 36, height: 36, objectFit: "contain" }}
+                        style={{ width: 52, height: 52, objectFit: "contain" }}
                       />
                     </button>
                   ))}
