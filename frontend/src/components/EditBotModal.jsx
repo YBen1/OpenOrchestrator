@@ -157,7 +157,7 @@ export default function EditBotModal({ bot, onClose, onSave }) {
                 className="input-apple"
                 style={{ textAlign: "center", padding: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", height: 44 }}
               >
-                <BotEmoji emoji={form.emoji} name={form.name} size={32} />
+                <BotEmoji emoji={form.emoji} name={form.name} size={56} />
               </button>
             </Field>
             <Field label="Name" style={{ flex: 1 }}>

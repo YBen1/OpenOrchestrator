@@ -130,7 +130,7 @@ export default function NewBotModal({ onClose, onCreate }) {
                   height: 44,
                 }}
               >
-                <BotEmoji emoji={form.emoji} name={form.name} size={32} />
+                <BotEmoji emoji={form.emoji} name={form.name} size={56} />
               </button>
             </Field>
             <Field label="Name" style={{ flex: 1 }}>
