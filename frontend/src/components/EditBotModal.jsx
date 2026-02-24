@@ -2,6 +2,8 @@ import { Search, Globe, Code, FolderOpen, Send } from "lucide-react";
 import { useState, useEffect } from "react";
 import { SIMPLE_MODELS, SIMPLE_MODEL_VALUES, GroupedModelOptions } from "./modelCatalog.jsx";
 import { ModalHeader, Field, ToolChip, AdvancedSection, useSessionToggle } from "./NewBotModal";
+import BotEmoji from "./BotEmoji";
+import EmojiPicker from "./EmojiPicker";
 import { api } from "../api";
 
 const SIMPLE_SCHEDULES = [
@@ -65,6 +67,7 @@ export default function EditBotModal({ bot, onClose, onSave }) {
     }
   }, [advancedDefaults, setAdvancedOpen]);
 
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
   const toggleTool = (t) =>
     set("tools", form.tools.includes(t) ? form.tools.filter((x) => x !== t) : [...form.tools, t]);
@@ -147,14 +150,15 @@ export default function EditBotModal({ bot, onClose, onSave }) {
             <Toggle active={form.enabled} onChange={() => set("enabled", !form.enabled)} />
           </div>
 
+          {emojiOpen && <EmojiPicker value={form.emoji} onChange={(v) => set("emoji", v)} onClose={() => setEmojiOpen(false)} />}
           <div className="flex gap-3">
             <Field label="Emoji" style={{ width: 72 }}>
-              <input
-                value={form.emoji}
-                onChange={(e) => set("emoji", e.target.value)}
+              <button type="button" onClick={() => setEmojiOpen(true)}
                 className="input-apple"
-                style={{ textAlign: "center", fontSize: 20, padding: "8px" }}
-              />
+                style={{ textAlign: "center", padding: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", height: 44 }}
+              >
+                <BotEmoji emoji={form.emoji} name={form.name} size={32} />
+              </button>
             </Field>
             <Field label="Name" style={{ flex: 1 }}>
               <input
@@ -300,7 +304,7 @@ export default function EditBotModal({ bot, onClose, onSave }) {
                     <input className="input-apple" placeholder="Chat ID (send /start to your bot, then click Find)"
                       value={form._tg_chat || ''} onChange={e => set('_tg_chat', e.target.value)} />
                     <button type="button" onClick={async () => {
-                      if (!form._tg_token) return;
+                      if (!form._tg_token) {return;}
                       try {
                         const chat = await api.findTelegramChat(form._tg_token);
                         if (chat?.chat_id) {
@@ -309,7 +313,7 @@ export default function EditBotModal({ bot, onClose, onSave }) {
                           const updated = await api.getChannels();
                           setChannels(updated);
                           const newCh = updated.find(c => c.type === 'telegram');
-                          if (newCh) set('output_channel', newCh.id);
+                          if (newCh) {set('output_channel', newCh.id);}
                         }
                       } catch { alert('No chat found — send your bot a message first.'); }
                     }} className="btn-primary" style={{ alignSelf: 'flex-start', fontSize: 12, padding: '6px 14px' }}>
@@ -323,12 +327,12 @@ export default function EditBotModal({ bot, onClose, onSave }) {
                     <input className="input-apple" placeholder="https://example.com/webhook"
                       value={form._webhook_url || ''} onChange={e => set('_webhook_url', e.target.value)} style={{ flex: 1 }} />
                     <button type="button" onClick={async () => {
-                      if (!form._webhook_url) return;
+                      if (!form._webhook_url) {return;}
                       const ch = await api.createChannel({ type: 'webhook', name: 'Webhook', config: { url: form._webhook_url } });
                       const updated = await api.getChannels();
                       setChannels(updated);
                       const newCh = updated.find(c => c.type === 'webhook');
-                      if (newCh) set('output_channel', newCh.id);
+                      if (newCh) {set('output_channel', newCh.id);}
                     }} className="btn-primary" style={{ fontSize: 12, padding: '6px 14px', whiteSpace: 'nowrap' }}>
                       Save
                     </button>

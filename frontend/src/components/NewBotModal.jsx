@@ -1,6 +1,8 @@
 import { X, Search, Globe, Code, FolderOpen, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { SIMPLE_MODELS, SIMPLE_MODEL_VALUES, GroupedModelOptions } from "./modelCatalog.jsx";
+import BotEmoji from "./BotEmoji";
+import EmojiPicker from "./EmojiPicker";
 
 const SIMPLE_SCHEDULES = [
   { label: "Manual", value: "" },
@@ -50,7 +52,7 @@ export function useSessionToggle(key, initialValue) {
 export default function NewBotModal({ onClose, onCreate }) {
   const [form, setForm] = useState({
     name: "",
-    emoji: "🤖",
+    emoji: "robot",
     prompt: "",
     model: "gpt-4o-mini",
     tools: [],
@@ -59,6 +61,7 @@ export default function NewBotModal({ onClose, onCreate }) {
     max_runtime_seconds: DEFAULT_MAX_RUNTIME,
   });
   const [advancedOpen, setAdvancedOpen] = useSessionToggle("openclaw.newbot.advanced", false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
   const toggleTool = (t) =>
@@ -104,14 +107,15 @@ export default function NewBotModal({ onClose, onCreate }) {
           className="space-y-5"
           style={{ marginTop: 20 }}
         >
+          {emojiOpen && <EmojiPicker value={form.emoji} onChange={(v) => set("emoji", v)} onClose={() => setEmojiOpen(false)} />}
           <div className="flex gap-3">
             <Field label="Emoji" style={{ width: 72 }}>
-              <input
-                value={form.emoji}
-                onChange={(e) => set("emoji", e.target.value)}
+              <button type="button" onClick={() => setEmojiOpen(true)}
                 className="input-apple"
-                style={{ textAlign: "center", fontSize: 20, padding: "8px" }}
-              />
+                style={{ textAlign: "center", padding: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", height: 44 }}
+              >
+                <BotEmoji emoji={form.emoji} name={form.name} size={32} />
+              </button>
             </Field>
             <Field label="Name" style={{ flex: 1 }}>
               <input

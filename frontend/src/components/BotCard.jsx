@@ -1,5 +1,6 @@
 import { Play, Pencil, Copy } from 'lucide-react';
 import { api } from '../api';
+import BotEmoji from './BotEmoji';
 
 const SCHEDULE_LABELS = {
   '*/5 * * * *': 'Every 5 min', '*/15 * * * *': 'Every 15 min',
@@ -43,12 +44,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: 14,
-          background: 'var(--accent-soft)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 18, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
-        }}>{(bot.name || '?')[0].toUpperCase()}</div>
+        <BotEmoji emoji={bot.emoji} name={bot.name} size={40} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <h3 style={{

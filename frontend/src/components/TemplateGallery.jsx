@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, Search, FolderOpen, Clock, FileText, Globe, Mail, FlaskConical, TrendingDown, Newspaper, Code2, Microscope, Server, Languages } from 'lucide-react';
+import { X, Search, FolderOpen, Clock } from 'lucide-react';
 import { api } from '../api';
+import BotEmoji from './BotEmoji';
 
 export default function TemplateGallery({ onClose, onCreate }) {
   const [templates, setTemplates] = useState([]);
@@ -23,24 +24,20 @@ export default function TemplateGallery({ onClose, onCreate }) {
     });
   };
 
-  const ICON_MAP = {
-    'search': Search,
-    'file-text': FileText,
-    'languages': Languages,
-    'mail': Mail,
-    'microscope': Microscope,
-    'trending-down': TrendingDown,
-    'newspaper': Newspaper,
-    'code': Code2,
-    'server': Server,
-    'globe': Globe,
+  const EMOJI_MAP = {
+    'search': 'search',
+    'file-text': 'doc-search',
+    'languages': 'editor',
+    'mail': 'email',
+    'microscope': 'doc-check',
+    'trending-down': 'numbers',
+    'newspaper': 'reading',
+    'code': 'code-terminal',
+    'server': 'database',
+    'globe': 'web-scraper',
   };
 
-  const getTemplateIcon = (tmpl) => {
-    const IconComp = ICON_MAP[tmpl.icon];
-    if (IconComp) return <IconComp size={20} strokeWidth={1.5} />;
-    return <span style={{ fontSize: 14, fontWeight: 700 }}>{(tmpl.name || '?')[0].toUpperCase()}</span>;
-  };
+  const getTemplateEmoji = (tmpl) => EMOJI_MAP[tmpl.icon] || 'robot';
 
   return (
     <div style={{
@@ -85,11 +82,7 @@ export default function TemplateGallery({ onClose, onCreate }) {
                   onClick={() => setSelected(selected === tmpl.id ? null : tmpl.id)}
                 >
                   <div className="flex items-center gap-3" style={{ marginBottom: 8 }}>
-                    <span style={{
-                      width: 36, height: 36, borderRadius: 10, background: 'var(--accent-soft)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--accent)', flexShrink: 0,
-                    }}>{getTemplateIcon(tmpl)}</span>
+                    <BotEmoji emoji={getTemplateEmoji(tmpl)} name={tmpl.name} size={36} />
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{tmpl.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
