@@ -34,6 +34,8 @@ const CATEGORIES = [
       "cinema",
       "wizard",
       "scooter",
+      "vacation",
+      "pirate",
     ],
   },
 ];
