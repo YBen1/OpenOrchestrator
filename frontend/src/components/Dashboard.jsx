@@ -31,7 +31,7 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: 16,
+            gap: 18,
           }}>
             {bots.map(bot => (
               <BotCard key={bot.id} bot={bot} onSelect={onSelect} onRun={onRun} onEdit={onEdit} onRefresh={onRefresh} />
@@ -83,8 +83,8 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
 
 function getGreeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'Good Morning';
-  if (h < 18) return 'Good Afternoon';
+  if (h < 12) {return 'Good Morning';}
+  if (h < 18) {return 'Good Afternoon';}
   return 'Good Evening';
 }
 
@@ -134,7 +134,7 @@ function ActivityFeed({ activity, onSelect }) {
     cancelled: { color: 'var(--text-tertiary)', label: 'Cancelled', dotClass: '' },
   };
 
-  if (activity.length === 0) return null;
+  if (activity.length === 0) {return null;}
 
   return (
     <section>
@@ -176,7 +176,7 @@ function ActivityFeed({ activity, onSelect }) {
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     cursor: 'pointer', transition: 'color 0.15s',
                   }}
-                  onClick={e => { e.stopPropagation(); if (a.bot_id) onSelect(a.bot_id); }}
+                  onClick={e => { e.stopPropagation(); if (a.bot_id) {onSelect(a.bot_id);} }}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-primary)'}
                 >{a.bot_name}</span>

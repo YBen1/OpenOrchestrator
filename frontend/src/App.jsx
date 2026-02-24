@@ -31,7 +31,7 @@ export default function App() {
     fetch('/api/auth/status', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
-        if (data.setup_required) setAuthState('setup');
+        if (data.setup_required) {setAuthState('setup');}
         else {
           // Try fetching a protected route to check session
           fetch('/api/bots', { credentials: 'include' })
@@ -84,7 +84,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--bg-primary)', backgroundImage: darkMode ? 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(230, 57, 70, 0.04) 0%, transparent 70%)' : 'none' }}>
       {/* Header */}
       <header className="header-bar" style={{ padding: '0 24px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', minWidth: 200 }} onClick={() => nav('dashboard')}>

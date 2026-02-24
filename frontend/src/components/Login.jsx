@@ -12,7 +12,7 @@ export default function Login({ setupRequired, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!password) return;
+    if (!password) {return;}
     if (isSetup && password !== confirm) {
       setError('Passwords do not match.');
       return;
@@ -60,12 +60,13 @@ export default function Login({ setupRequired, onSuccess }) {
         border: '1px solid var(--border)',
         borderRadius: 20,
         padding: '40px 32px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <img src="/logo.png" alt="openOrchestrator" style={{
             width: 80, height: 80, borderRadius: 18,
             margin: '0 auto 16px', display: 'block',
+            filter: 'drop-shadow(0 0 40px rgba(230, 57, 70, 0.3))',
           }} />
           <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 6px' }}>
             {isSetup ? 'Set Password' : 'openOrchestrator'}

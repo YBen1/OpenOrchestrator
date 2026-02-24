@@ -24,7 +24,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
       style={{
         background: 'var(--bg-secondary)',
         border: '1px solid var(--border)',
-        borderRadius: 16,
+        borderRadius: 18,
         padding: '20px 20px 16px',
         cursor: 'pointer',
         opacity: disabled ? 0.5 : 1,
@@ -35,7 +35,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
       }}
       onMouseEnter={e => {
         e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = 'var(--shadow-hover)';
+        e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px rgba(230,57,70,0.08), 0 0 24px rgba(230,57,70,0.08)';
       }}
       onMouseLeave={e => {
         e.currentTarget.style.transform = 'translateY(0)';
@@ -44,7 +44,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
         <div style={{
-          width: 44, height: 44, borderRadius: 12,
+          width: 48, height: 48, borderRadius: 14,
           background: 'var(--accent-soft)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 18, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
@@ -84,7 +84,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
 
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        paddingTop: 14, borderTop: '1px solid var(--divider)',
+        paddingTop: 16, borderTop: '1px solid var(--divider)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{
@@ -107,7 +107,7 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
               opacity: disabled ? 0.4 : 1,
               transition: 'all 0.15s',
             }}
-            onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = 'var(--accent-hover)'; }}
+            onMouseEnter={e => { if (!disabled) {e.currentTarget.style.background = 'var(--accent-hover)';} }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; }}
           >
             <Play size={10} fill="white" strokeWidth={0} />

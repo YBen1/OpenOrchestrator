@@ -16,10 +16,11 @@
   --warning: #FF9F0A;
   --warning-soft: rgba(255, 159, 10, 0.12);
   --purple: #BF5AF2;
-  --bg-primary: #0A0A0A;
-  --bg-secondary: #161618;
-  --bg-tertiary: #232326;
-  --bg-elevated: #232326;
+  --bg-primary: #09090B;
+  --bg-secondary: #111113;
+  --surface: #18181B;
+  --bg-tertiary: #1E1E22;
+  --bg-elevated: #1E1E22;
   --text-primary: #F5F5F7;
   --text-secondary: #98989F;
   --text-tertiary: #636366;
@@ -32,7 +33,7 @@
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
   --shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.3);
   --overlay: rgba(0, 0, 0, 0.5);
-  --header-bg: rgba(10, 10, 10, 0.82);
+  --header-bg: rgba(9, 9, 11, 0.85);
 }
 
 /* ─── Light ─── */
@@ -103,7 +104,7 @@ code, kbd {
 .card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -111,14 +112,14 @@ code, kbd {
 .glass-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: var(--shadow-sm);
 }
 
 .card-elevated {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: var(--shadow-md);
 }
 
@@ -149,7 +150,7 @@ code, kbd {
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); box-shadow: 0 2px 8px rgba(230, 57, 70, 0.25); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); box-shadow: 0 0 16px rgba(230, 57, 70, 0.3); }
 .btn-primary:active:not(:disabled) { transform: scale(0.97); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -324,15 +325,15 @@ textarea.input-apple {
 .modal-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  box-shadow: var(--shadow-lg);
+  border-radius: 22px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
   width: 100%;
   overflow: hidden;
 }
 
 /* ─── Header bar ─── */
 .header-bar {
-  background: linear-gradient(180deg, var(--header-bg) 0%, rgba(10, 10, 10, 0.72) 100%);
+  background: linear-gradient(180deg, var(--header-bg) 0%, rgba(9, 9, 11, 0.72) 100%);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--border);
