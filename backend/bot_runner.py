@@ -299,23 +299,83 @@ async def _call_engine(bot: Bot, log, db_factory, input_context: str = None) -> 
 
 
 async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tuple:
-    """Call LLM — tries pi-ai engine first, falls back to direct API calls."""
+    """Call LLM — tries pi-ai engine first (with full tool support), falls back to direct API calls."""
     import json as _json
     from tools import get_tool_schemas, execute_tool_call
 
-    # Try engine first (only if no tools enabled — engine doesn't support tool calls yet)
-    import json as _json2
+    # Parse enabled tools
     enabled_tools = []
     try:
-        enabled_tools = _json2.loads(bot.tools) if bot.tools else []
+        enabled_tools = _json.loads(bot.tools) if bot.tools else []
     except Exception:
         pass
-    if not enabled_tools:
-        engine_result = await _call_engine(bot, log, db_factory, input_context)
-        if engine_result is not None:
-            return engine_result
 
-    await log("⚡ Direct API mode (engine not available)...")
+    # Try the OpenClaw Agent Runner Engine first (supports ALL tools)
+    try:
+        from engine import run_agent_sync, get_api_keys
+        db = db_factory()
+        try:
+            api_keys = get_api_keys(db)
+            system_prompt = _build_context(bot, db)
+        finally:
+            db.close()
+
+        user_message = bot.prompt
+        if input_context:
+            user_message = f"Kontext vom vorherigen Schritt:\n\n{input_context}\n\nAufgabe: {bot.prompt}"
+
+        timeout = bot.max_runtime_seconds if hasattr(bot, 'max_runtime_seconds') and bot.max_runtime_seconds else 120
+
+        # Map tool names: "Web Search" → "web_search", "Browser" → "browser", etc.
+        tool_name_map = {
+            "Web Search": "web_search", "web_search": "web_search",
+            "Browser": "browser", "browser": "browser",
+            "Code": "exec", "code": "exec", "exec": "exec",
+            "Files": "read_file", "files": "read_file", "read_file": "read_file", "write_file": "write_file",
+            "Image": "image", "image": "image",
+        }
+        engine_tools = []
+        for t in enabled_tools:
+            mapped = tool_name_map.get(t)
+            if mapped:
+                engine_tools.append(mapped)
+                # Files includes both read and write
+                if mapped == "read_file":
+                    engine_tools.append("write_file")
+
+        await log(f"🚀 Engine ({bot.model}, {len(engine_tools)} tools)...")
+        result = await run_agent_sync(
+            prompt=system_prompt,
+            input_text=user_message,
+            model=bot.model,
+            tools=engine_tools,
+            api_keys=api_keys,
+            max_time_seconds=timeout,
+            max_tool_calls=20,
+        )
+
+        if result is not None and result.get("status") == "completed":
+            # Extract token usage from events
+            tokens_in, tokens_out = 0, 0
+            for event in result.get("events", []):
+                if event.get("type") == "complete" and event.get("usage"):
+                    tokens_in = event["usage"].get("input", 0)
+                    tokens_out = event["usage"].get("output", 0)
+                if event.get("type") == "tool_call":
+                    await log(f"🔧 {event['name']}({str(event.get('args', ''))[:80]})")
+                if event.get("type") == "complete":
+                    dur = event.get("durationMs", 0) / 1000
+                    tc = event.get("toolCalls", 0)
+                    await log(f"📊 {bot.model} | {tokens_in}→{tokens_out} tokens | {tc} tools | {dur:.1f}s")
+            return result.get("output", ""), tokens_in, tokens_out
+        elif result is not None and result.get("error"):
+            await log(f"⚠️ Engine: {result['error'][:200]}")
+            # Fall through to direct API mode
+        # If result is None, engine is unavailable — fall through
+    except Exception as e:
+        await log(f"⚠️ Engine unavailable: {e}")
+
+    await log("⚡ Fallback: Direct API mode...")
 
     db = db_factory()
     try:
