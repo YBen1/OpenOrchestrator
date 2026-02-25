@@ -130,21 +130,47 @@ def _build_context(bot: Bot, db) -> str:
 
 
 # Pricing per 1M tokens (input, output)
+# Pricing per 1M tokens (input, output) — updated 2026-02-25
 PRICING = {
-    "gpt-4o-mini": (0.15, 0.60),
-    "gpt-4o": (2.50, 10.00),
-    "gpt-4.1-nano": (0.10, 0.40),
-    "gpt-4.1-mini": (0.40, 1.60),
-    "gpt-4.1": (2.00, 8.00),
+    # OpenAI GPT-5 family
+    "gpt-5.2": (2.00, 16.00),
+    "gpt-5.2-pro": (10.00, 40.00),
+    "gpt-5.1": (1.75, 14.00),
+    "gpt-5": (1.50, 12.00),
+    "gpt-5-pro": (8.00, 32.00),
     "gpt-5-mini": (0.25, 2.00),
-    "gpt-5.2": (1.75, 14.00),
+    "gpt-5-nano": (0.10, 0.40),
+    # OpenAI GPT-4.1 family
+    "gpt-4.1": (2.00, 8.00),
+    "gpt-4.1-mini": (0.40, 1.60),
+    "gpt-4.1-nano": (0.10, 0.40),
+    # OpenAI GPT-4o family
+    "gpt-4o": (2.50, 10.00),
+    "gpt-4o-mini": (0.15, 0.60),
+    # OpenAI reasoning
+    "o3": (2.00, 8.00),
+    "o3-mini": (1.10, 4.40),
+    "o4-mini": (1.10, 4.40),
+    "o3-pro": (20.00, 80.00),
+    # OpenAI search
+    "gpt-4o-search-preview": (2.50, 10.00),
+    "gpt-4o-mini-search-preview": (0.15, 0.60),
+    # OpenAI Codex
+    "gpt-5.3-codex": (2.00, 16.00),
+    "gpt-5.2-codex": (2.00, 16.00),
+    "gpt-5.1-codex": (1.75, 14.00),
+    # Anthropic
     "claude-haiku-4-20250414": (0.80, 4.00),
     "claude-sonnet-4-20250514": (3.00, 15.00),
     "claude-opus-4-20250514": (15.00, 75.00),
+    # Google
     "gemini-2.0-flash": (0.10, 0.40),
+    "gemini-2.5-flash": (0.15, 0.60),
     "gemini-2.5-pro": (1.25, 10.00),
+    # Mistral
     "mistral-small-latest": (0.10, 0.30),
     "mistral-large-latest": (2.00, 6.00),
+    "codestral-latest": (0.30, 0.90),
 }
 
 

@@ -728,16 +728,48 @@ function resolveModelFromString(modelStr: string, apiKey: string): Model<any> | 
   
   // Try common aliases
   const aliases: Record<string, [string, string]> = {
+    // GPT-5 family
+    "gpt-5.2": ["openai", "gpt-5.2"],
+    "gpt-5.2-pro": ["openai", "gpt-5.2-pro"],
+    "gpt-5.1": ["openai", "gpt-5.1"],
+    "gpt-5": ["openai", "gpt-5"],
+    "gpt-5-pro": ["openai", "gpt-5-pro"],
+    "gpt-5-mini": ["openai", "gpt-5-mini"],
+    "gpt-5-nano": ["openai", "gpt-5-nano"],
+    // GPT-4.1
+    "gpt-4.1": ["openai", "gpt-4.1"],
+    "gpt-4.1-mini": ["openai", "gpt-4.1-mini"],
+    "gpt-4.1-nano": ["openai", "gpt-4.1-nano"],
+    // GPT-4o
     "gpt-4o": ["openai", "gpt-4o"],
     "gpt-4o-mini": ["openai", "gpt-4o-mini"],
-    "gpt-5": ["openai", "gpt-5"],
-    "gpt-5-mini": ["openai", "gpt-5-mini"],
+    // Reasoning
+    "o3": ["openai", "o3"],
+    "o3-mini": ["openai", "o3-mini"],
+    "o4-mini": ["openai", "o4-mini"],
+    "o3-pro": ["openai", "o3-pro"],
+    // Search
+    "gpt-4o-search-preview": ["openai", "gpt-4o-search-preview"],
+    "gpt-4o-mini-search-preview": ["openai", "gpt-4o-mini-search-preview"],
+    // Codex
+    "gpt-5.3-codex": ["openai", "gpt-5.3-codex"],
+    "gpt-5.2-codex": ["openai", "gpt-5.2-codex"],
+    "gpt-5.1-codex": ["openai", "gpt-5.1-codex"],
+    // Anthropic
     "claude-sonnet-4": ["anthropic", "claude-sonnet-4-20250514"],
-    "claude-opus-4": ["anthropic", "claude-opus-4-0"],
-    "claude-3.5-sonnet": ["anthropic", "claude-3-5-sonnet-20241022"],
     "claude-sonnet-4-20250514": ["anthropic", "claude-sonnet-4-20250514"],
+    "claude-opus-4": ["anthropic", "claude-opus-4-20250514"],
+    "claude-opus-4-20250514": ["anthropic", "claude-opus-4-20250514"],
+    "claude-haiku-4": ["anthropic", "claude-haiku-4-20250414"],
+    "claude-haiku-4-20250414": ["anthropic", "claude-haiku-4-20250414"],
+    // Google
     "gemini-2.5-flash": ["google", "gemini-2.5-flash-preview-05-20"],
     "gemini-2.5-pro": ["google", "gemini-2.5-pro-preview-06-05"],
+    "gemini-2.0-flash": ["google", "gemini-2.0-flash"],
+    // Mistral
+    "mistral-large-latest": ["mistral", "mistral-large-latest"],
+    "mistral-small-latest": ["mistral", "mistral-small-latest"],
+    "codestral-latest": ["mistral", "codestral-latest"],
   };
   
   // Normalize: remove "Advanced: " prefix that UI adds
