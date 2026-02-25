@@ -130,6 +130,88 @@ function getToolSchemas(enabledTools: string[]): Tool[] {
         lines: Type.Optional(Type.Number({ description: "Number of lines to read" })),
       }),
     },
+    process: {
+      name: "process",
+      description: "Manage background exec sessions. Actions: list (show running), poll (check status), log (get output), write (send input), kill (terminate).",
+      parameters: Type.Object({
+        action: Type.Union([Type.Literal("list"), Type.Literal("poll"), Type.Literal("log"), Type.Literal("write"), Type.Literal("kill")]),
+        sessionId: Type.Optional(Type.String({ description: "Session ID (required for poll/log/write/kill)" })),
+        data: Type.Optional(Type.String({ description: "Data to write to stdin (for write action)" })),
+      }),
+    },
+    apply_patch: {
+      name: "apply_patch",
+      description: "Apply a unified diff patch to a file. Supports multi-hunk edits.",
+      parameters: Type.Object({
+        path: Type.String({ description: "Path to the file to patch" }),
+        patch: Type.String({ description: "Unified diff content" }),
+      }),
+    },
+    cron: {
+      name: "cron",
+      description: "Manage scheduled jobs via OpenClaw Gateway. Actions: list, add, remove, run, enable, disable. For 'add': provide schedule (cron expression) and payload (command to run).",
+      parameters: Type.Object({
+        action: Type.Union([Type.Literal("list"), Type.Literal("add"), Type.Literal("remove"), Type.Literal("run"), Type.Literal("enable"), Type.Literal("disable")]),
+        jobId: Type.Optional(Type.String({ description: "Job ID (for remove/run/enable/disable)" })),
+        name: Type.Optional(Type.String({ description: "Job name (for add)" })),
+        schedule: Type.Optional(Type.String({ description: "Cron expression e.g. '0 9 * * *' (for add)" })),
+        command: Type.Optional(Type.String({ description: "Command/message to execute (for add)" })),
+      }),
+    },
+    sessions_spawn: {
+      name: "sessions_spawn",
+      description: "Spawn a background sub-agent run in an isolated session. The agent runs independently and announces results when done.",
+      parameters: Type.Object({
+        task: Type.String({ description: "Task description for the sub-agent" }),
+        model: Type.Optional(Type.String({ description: "Model to use (default: configured default)" })),
+        label: Type.Optional(Type.String({ description: "Label for the session" })),
+      }),
+    },
+    subagents: {
+      name: "subagents",
+      description: "List, steer, or kill spawned sub-agents. Actions: list (show active), steer (send message), kill (terminate).",
+      parameters: Type.Object({
+        action: Type.Union([Type.Literal("list"), Type.Literal("steer"), Type.Literal("kill")]),
+        target: Type.Optional(Type.String({ description: "Session key or label (for steer/kill)" })),
+        message: Type.Optional(Type.String({ description: "Message to send (for steer)" })),
+      }),
+    },
+    sessions_list: {
+      name: "sessions_list",
+      description: "List active sessions with optional filters.",
+      parameters: Type.Object({
+        activeMinutes: Type.Optional(Type.Number({ description: "Only sessions active in last N minutes" })),
+        limit: Type.Optional(Type.Number({ description: "Max results" })),
+      }),
+    },
+    sessions_send: {
+      name: "sessions_send",
+      description: "Send a message into another session.",
+      parameters: Type.Object({
+        sessionKey: Type.String({ description: "Target session key" }),
+        message: Type.String({ description: "Message to send" }),
+      }),
+    },
+    nodes: {
+      name: "nodes",
+      description: "Discover and control paired nodes/devices. Actions: status, camera_snap, screen_record, location_get, notify, run.",
+      parameters: Type.Object({
+        action: Type.Union([Type.Literal("status"), Type.Literal("camera_snap"), Type.Literal("screen_record"), Type.Literal("location_get"), Type.Literal("notify"), Type.Literal("run")]),
+        node: Type.Optional(Type.String({ description: "Node id or name" })),
+        command: Type.Optional(Type.String({ description: "Command to run on node (for run)" })),
+        title: Type.Optional(Type.String({ description: "Notification title (for notify)" })),
+        body: Type.Optional(Type.String({ description: "Notification body (for notify)" })),
+      }),
+    },
+    canvas: {
+      name: "canvas",
+      description: "Control node canvases — present HTML/URL content, evaluate JS, take snapshots.",
+      parameters: Type.Object({
+        action: Type.Union([Type.Literal("present"), Type.Literal("hide"), Type.Literal("navigate"), Type.Literal("eval"), Type.Literal("snapshot")]),
+        url: Type.Optional(Type.String({ description: "URL to present/navigate to" })),
+        javaScript: Type.Optional(Type.String({ description: "JS to evaluate (for eval)" })),
+      }),
+    },
   };
 
   return enabledTools.filter(t => allTools[t]).map(t => allTools[t]);
@@ -143,6 +225,26 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const execAsync = promisify(execCb);
+
+// Gateway token for OpenClaw CLI calls
+const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || "";
+
+async function openclawCli(args: string, timeout = 30000): Promise<string> {
+  try {
+    const tokenArg = GATEWAY_TOKEN ? `--token ${GATEWAY_TOKEN}` : "";
+    const { stdout, stderr } = await execAsync(`openclaw ${args} ${tokenArg} --json 2>/dev/null || openclaw ${args} ${tokenArg} 2>&1`, {
+      timeout,
+      maxBuffer: 1024 * 1024,
+      env: { ...process.env, OPENCLAW_GATEWAY_TOKEN: GATEWAY_TOKEN },
+    });
+    return (stdout + (stderr || "")).trim();
+  } catch (e: any) {
+    return `OpenClaw CLI error: ${e.message}\n${e.stdout || ""}\n${e.stderr || ""}`.trim();
+  }
+}
+
+// Background process tracking for the process tool
+const bgProcesses = new Map<string, { proc: any; output: string[]; done: boolean; exitCode: number | null }>();
 
 // Lazy Playwright browser instance
 let _browser: any = null;
@@ -383,6 +485,129 @@ async function executeTool(name: string, args: Record<string, any>, apiKeys: Rec
         const from = (args.from || 1) - 1;
         const count = args.lines || allLines.length;
         return allLines.slice(from, from + count).join("\n");
+      }
+
+      case "process": {
+        switch (args.action) {
+          case "list": {
+            const entries: string[] = [];
+            for (const [id, p] of bgProcesses) {
+              entries.push(`${id}: ${p.done ? `exited(${p.exitCode})` : "running"} (${p.output.length} lines)`);
+            }
+            return entries.length ? entries.join("\n") : "No background processes.";
+          }
+          case "poll": {
+            const p = bgProcesses.get(args.sessionId || "");
+            if (!p) return `Session not found: ${args.sessionId}`;
+            return p.done ? `Completed (exit ${p.exitCode}). Last output:\n${p.output.slice(-10).join("\n")}` : "Still running...";
+          }
+          case "log": {
+            const p = bgProcesses.get(args.sessionId || "");
+            if (!p) return `Session not found: ${args.sessionId}`;
+            return p.output.slice(-50).join("\n") || "(no output)";
+          }
+          case "write": {
+            const p = bgProcesses.get(args.sessionId || "");
+            if (!p || p.done) return `Session not found or already finished: ${args.sessionId}`;
+            try { p.proc.stdin?.write(args.data + "\n"); return "Written."; }
+            catch { return "Failed to write to process."; }
+          }
+          case "kill": {
+            const p = bgProcesses.get(args.sessionId || "");
+            if (!p) return `Session not found: ${args.sessionId}`;
+            try { p.proc.kill("SIGTERM"); p.done = true; return "Killed."; }
+            catch { return "Failed to kill process."; }
+          }
+          default: return `Unknown process action: ${args.action}`;
+        }
+      }
+
+      case "apply_patch": {
+        // Write patch to temp file and apply with patch command
+        const patchFile = `/tmp/patch-${Date.now()}.diff`;
+        await fs.writeFile(patchFile, args.patch, "utf-8");
+        try {
+          const { stdout } = await execAsync(`cd / && patch -p0 < ${patchFile} 2>&1`, { timeout: 10000 });
+          await fs.unlink(patchFile).catch(() => {});
+          return `Patch applied:\n${stdout}`;
+        } catch (e: any) {
+          await fs.unlink(patchFile).catch(() => {});
+          return `Patch failed: ${e.message}\n${e.stdout || ""}`;
+        }
+      }
+
+      case "cron": {
+        switch (args.action) {
+          case "list": return await openclawCli("cron list");
+          case "add": {
+            const name = args.name ? `--name "${args.name}"` : "";
+            const sched = args.schedule ? `--schedule "${args.schedule}"` : "";
+            const cmd = args.command ? `--text "${args.command}"` : "";
+            return await openclawCli(`cron add ${name} ${sched} ${cmd}`);
+          }
+          case "remove": return await openclawCli(`cron rm ${args.jobId}`);
+          case "run": return await openclawCli(`cron run ${args.jobId}`);
+          case "enable": return await openclawCli(`cron enable ${args.jobId}`);
+          case "disable": return await openclawCli(`cron disable ${args.jobId}`);
+          default: return `Unknown cron action: ${args.action}`;
+        }
+      }
+
+      case "sessions_spawn": {
+        const model = args.model ? `--model "${args.model}"` : "";
+        const label = args.label ? `--label "${args.label}"` : "";
+        return await openclawCli(`agent -m "${args.task}" ${model} ${label} --deliver`, 60000);
+      }
+
+      case "subagents": {
+        switch (args.action) {
+          case "list": return await openclawCli("system presence");
+          case "steer": {
+            if (!args.target || !args.message) return "Error: target and message required for steer";
+            return await openclawCli(`agent -m "${args.message}" --session "${args.target}"`);
+          }
+          case "kill": return `Kill not directly supported via CLI. Use 'process kill' if you have the session ID.`;
+          default: return `Unknown subagents action: ${args.action}`;
+        }
+      }
+
+      case "sessions_list": {
+        return await openclawCli("system presence");
+      }
+
+      case "sessions_send": {
+        return await openclawCli(`agent -m "${args.message}" --session "${args.sessionKey}" --deliver`);
+      }
+
+      case "nodes": {
+        switch (args.action) {
+          case "status": return await openclawCli("nodes status 2>/dev/null || echo 'No nodes paired'");
+          case "camera_snap": {
+            const node = args.node ? `--node "${args.node}"` : "";
+            return await openclawCli(`nodes camera snap ${node}`);
+          }
+          case "notify": {
+            const node = args.node ? `--node "${args.node}"` : "";
+            const title = args.title || "Notification";
+            return await openclawCli(`nodes notify --title "${title}" --body "${args.body || ""}" ${node}`);
+          }
+          case "run": {
+            const node = args.node ? `--node "${args.node}"` : "";
+            return await openclawCli(`nodes run -- ${args.command || "echo ok"} ${node}`, 60000);
+          }
+          default: return await openclawCli(`nodes ${args.action} ${args.node ? "--node " + args.node : ""}`);
+        }
+      }
+
+      case "canvas": {
+        switch (args.action) {
+          case "present": return await openclawCli(`canvas present --url "${args.url || "about:blank"}"`);
+          case "hide": return await openclawCli("canvas hide");
+          case "navigate": return await openclawCli(`canvas navigate --url "${args.url}"`);
+          case "eval": return await openclawCli(`canvas eval --js '${(args.javaScript || "").replace(/'/g, "\\'")}'`);
+          case "snapshot": return await openclawCli("canvas snapshot");
+          default: return `Unknown canvas action: ${args.action}`;
+        }
       }
 
       default:
@@ -691,11 +916,20 @@ app.get("/tools", (_req, res) => {
       { name: "read_file", description: "Read file contents", group: "core" },
       { name: "write_file", description: "Write files", group: "core" },
       { name: "edit", description: "Precise text replacement in files", group: "core" },
+      { name: "process", description: "Manage background exec sessions", group: "core" },
+      { name: "apply_patch", description: "Apply unified diff patches", group: "core" },
       { name: "image", description: "Image analysis (vision)", group: "ai" },
       { name: "tts", description: "Text-to-speech (needs OPENAI_API_KEY)", group: "ai" },
       { name: "message", description: "Send messages to Telegram/Discord/Webhook", group: "communication" },
       { name: "memory_search", description: "Search bot memory files", group: "memory" },
       { name: "memory_get", description: "Read bot memory files", group: "memory" },
+      { name: "cron", description: "Schedule jobs via OpenClaw Gateway", group: "gateway" },
+      { name: "sessions_spawn", description: "Spawn background sub-agents", group: "gateway" },
+      { name: "subagents", description: "List/steer/kill sub-agents", group: "gateway" },
+      { name: "sessions_list", description: "List active sessions", group: "gateway" },
+      { name: "sessions_send", description: "Send message to another session", group: "gateway" },
+      { name: "nodes", description: "Control paired devices/nodes", group: "gateway" },
+      { name: "canvas", description: "Present/control UI canvases", group: "gateway" },
     ],
   });
 });

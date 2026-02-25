@@ -1,4 +1,4 @@
-import { Terminal, Globe, Layout, Sparkles, MessageSquare, Zap, Brain } from 'lucide-react';
+import { Terminal, Globe, Layout, Sparkles, MessageSquare, Zap, Brain, Server } from 'lucide-react';
 
 export const TOOL_GROUPS = [
   {
@@ -10,6 +10,8 @@ export const TOOL_GROUPS = [
       { value: 'read_file', label: 'Read', desc: 'Read files' },
       { value: 'write_file', label: 'Write', desc: 'Create/overwrite files' },
       { value: 'edit', label: 'Edit', desc: 'Precise text edits' },
+      { value: 'process', label: 'Process', desc: 'Background exec management' },
+      { value: 'apply_patch', label: 'Patch', desc: 'Apply unified diffs' },
     ],
   },
   {
@@ -56,13 +58,17 @@ export const TOOL_GROUPS = [
     ],
   },
   {
-    id: 'advanced',
-    label: 'Advanced',
-    icon: <Zap size={14} />,
+    id: 'gateway',
+    label: 'Gateway',
+    icon: <Server size={14} />,
     tools: [
       { value: 'cron', label: 'Cron', desc: 'Scheduling & reminders' },
       { value: 'sessions_spawn', label: 'Sub-Agents', desc: 'Spawn background agents' },
       { value: 'subagents', label: 'Orchestrate', desc: 'List/steer sub-agents' },
+      { value: 'sessions_list', label: 'Sessions', desc: 'List active sessions' },
+      { value: 'sessions_send', label: 'Send', desc: 'Message another session' },
+      { value: 'nodes', label: 'Nodes', desc: 'Control paired devices' },
+      { value: 'canvas', label: 'Canvas', desc: 'UI rendering & control' },
     ],
   },
 ];
