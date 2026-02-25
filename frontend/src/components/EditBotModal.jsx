@@ -1,10 +1,11 @@
-import { Search, Globe, Code, FolderOpen, Send } from "lucide-react";
+// lucide-react icons imported via NewBotModal
 import { useState, useEffect } from "react";
 import { SIMPLE_MODELS, SIMPLE_MODEL_VALUES, GroupedModelOptions } from "./modelCatalog.jsx";
-import { ModalHeader, Field, ToolChip, AdvancedSection, useSessionToggle } from "./NewBotModal";
+import { ModalHeader, Field, GroupedToolSelector, AdvancedSection, useSessionToggle } from "./NewBotModal";
 import BotEmoji from "./BotEmoji";
 import EmojiPicker from "./EmojiPicker";
 import { api } from "../api";
+import { normalizeBotTools } from "./toolCatalog.jsx";
 
 const SIMPLE_SCHEDULES = [
   { label: "Manual", value: "" },
@@ -14,20 +15,6 @@ const SIMPLE_SCHEDULES = [
 ];
 
 const SIMPLE_SCHEDULE_VALUES = new Set(SIMPLE_SCHEDULES.map((s) => s.value));
-
-const TOOL_ICONS = {
-  web_search: <Search size={14} strokeWidth={2} />,
-  browser: <Globe size={14} strokeWidth={2} />,
-  code: <Code size={14} strokeWidth={2} />,
-  files: <FolderOpen size={14} strokeWidth={2} />,
-};
-
-const TOOLS = [
-  { value: "web_search", label: "Web Search" },
-  { value: "browser", label: "Browser" },
-  { value: "code", label: "Code" },
-  { value: "files", label: "Files" },
-];
 
 const DEFAULT_MAX_RUNTIME = 120;
 
@@ -49,7 +36,7 @@ export default function EditBotModal({ bot, onClose, onSave }) {
     emoji: bot.emoji,
     prompt: bot.prompt,
     model: bot.model,
-    tools: bot.tools || [],
+    tools: normalizeBotTools(bot.tools),
     schedule: bot.schedule || "",
     description: bot.description || "",
     enabled: bot.enabled !== false,
@@ -251,17 +238,7 @@ export default function EditBotModal({ bot, onClose, onSave }) {
               </Field>
 
               <Field label="Tools">
-                <div className="flex flex-wrap gap-2">
-                  {TOOLS.map((t) => (
-                    <ToolChip
-                      key={t.value}
-                      label={t.label}
-                      icon={TOOL_ICONS[t.value]}
-                      active={form.tools.includes(t.value)}
-                      onClick={() => toggleTool(t.value)}
-                    />
-                  ))}
-                </div>
+                <GroupedToolSelector tools={form.tools} onToggle={toggleTool} />
               </Field>
 
               <Field label="Custom cron">

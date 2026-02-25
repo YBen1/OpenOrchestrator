@@ -1,28 +1,15 @@
-import { X, Search, Globe, Code, FolderOpen, ChevronDown } from "lucide-react";
+import { X, ChevronDown, Key } from "lucide-react";
 import { useState, useEffect } from "react";
 import BotEmoji from "./BotEmoji";
 import EmojiPicker from "./EmojiPicker";
 import { SIMPLE_MODELS, SIMPLE_MODEL_VALUES, GroupedModelOptions } from "./modelCatalog.jsx";
+import { TOOL_GROUPS } from "./toolCatalog.jsx";
 
 const SIMPLE_SCHEDULES = [
   { label: "Manual", value: "" },
   { label: "Hourly", value: "0 * * * *" },
   { label: "Daily 9:00", value: "0 9 * * *" },
   { label: "Weekly Mon", value: "0 9 * * 1" },
-];
-
-const TOOL_ICONS = {
-  web_search: <Search size={14} strokeWidth={2} />,
-  browser: <Globe size={14} strokeWidth={2} />,
-  code: <Code size={14} strokeWidth={2} />,
-  files: <FolderOpen size={14} strokeWidth={2} />,
-};
-
-const TOOLS = [
-  { value: "web_search", label: "Web Search" },
-  { value: "browser", label: "Browser" },
-  { value: "code", label: "Code" },
-  { value: "files", label: "Files" },
 ];
 
 const DEFAULT_MAX_RUNTIME = 120;
@@ -227,17 +214,7 @@ export default function NewBotModal({ onClose, onCreate }) {
               </Field>
 
               <Field label="Tools">
-                <div className="flex flex-wrap gap-2">
-                  {TOOLS.map((t) => (
-                    <ToolChip
-                      key={t.value}
-                      label={t.label}
-                      icon={TOOL_ICONS[t.value]}
-                      active={form.tools.includes(t.value)}
-                      onClick={() => toggleTool(t.value)}
-                    />
-                  ))}
-                </div>
+                <GroupedToolSelector tools={form.tools} onToggle={toggleTool} />
               </Field>
 
               <Field label="Custom cron">
@@ -349,6 +326,32 @@ export function ToolChip({ label, icon, active, onClick }) {
       {icon}
       {label}
     </button>
+  );
+}
+
+export function GroupedToolSelector({ tools, onToggle }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {TOOL_GROUPS.map(group => (
+        <div key={group.id}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <span style={{ color: 'var(--text-tertiary)' }}>{group.icon}</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{group.label}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {group.tools.map(t => (
+              <ToolChip
+                key={t.value}
+                label={t.label}
+                icon={t.needsKey ? <Key size={10} style={{ opacity: 0.5 }} /> : null}
+                active={tools.includes(t.value)}
+                onClick={() => onToggle(t.value)}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

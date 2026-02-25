@@ -299,9 +299,9 @@ async def _call_engine(bot: Bot, log, db_factory, input_context: str = None) -> 
 
 
 async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tuple:
-    """Call LLM — tries pi-ai engine first (with full tool support), falls back to direct API calls."""
+    """Call LLM via the pi-ai Agent Runner Engine (TypeScript on :18810)."""
     import json as _json
-    from tools import get_tool_schemas, execute_tool_call
+    from engine import run_agent_sync, get_api_keys
 
     # Parse enabled tools
     enabled_tools = []
@@ -310,40 +310,29 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
     except Exception:
         pass
 
-    # Try the OpenClaw Agent Runner Engine first (supports ALL tools)
+    db = db_factory()
     try:
-        from engine import run_agent_sync, get_api_keys
-        db = db_factory()
-        try:
-            api_keys = get_api_keys(db)
-            system_prompt = _build_context(bot, db)
-        finally:
-            db.close()
+        api_keys = get_api_keys(db)
+        system_prompt = _build_context(bot, db)
+    finally:
+        db.close()
 
-        user_message = bot.prompt
-        if input_context:
-            user_message = f"Kontext vom vorherigen Schritt:\n\n{input_context}\n\nAufgabe: {bot.prompt}"
+    user_message = bot.prompt
+    if input_context:
+        user_message = f"Kontext vom vorherigen Schritt:\n\n{input_context}\n\nAufgabe: {bot.prompt}"
 
-        timeout = bot.max_runtime_seconds if hasattr(bot, 'max_runtime_seconds') and bot.max_runtime_seconds else 120
+    timeout = bot.max_runtime_seconds if hasattr(bot, 'max_runtime_seconds') and bot.max_runtime_seconds else 120
 
-        # Map tool names: "Web Search" → "web_search", "Browser" → "browser", etc.
-        tool_name_map = {
-            "Web Search": "web_search", "web_search": "web_search",
-            "Browser": "browser", "browser": "browser",
-            "Code": "exec", "code": "exec", "exec": "exec",
-            "Files": "read_file", "files": "read_file", "read_file": "read_file", "write_file": "write_file",
-            "Image": "image", "image": "image",
-        }
-        engine_tools = []
-        for t in enabled_tools:
-            mapped = tool_name_map.get(t)
-            if mapped:
-                engine_tools.append(mapped)
-                # Files includes both read and write
-                if mapped == "read_file":
-                    engine_tools.append("write_file")
+    # Legacy tool name mapping (old UI names → engine names)
+    legacy_map = {"Code": "exec", "code": "exec", "Files": "write", "files": "write"}
+    engine_tools = []
+    for t in enabled_tools:
+        mapped = legacy_map.get(t, t)
+        if mapped not in engine_tools:
+            engine_tools.append(mapped)
 
-        await log(f"🚀 Engine ({bot.model}, {len(engine_tools)} tools)...")
+    await log(f"🚀 Engine ({bot.model}, {len(engine_tools)} tools)...")
+    try:
         result = await run_agent_sync(
             prompt=system_prompt,
             input_text=user_message,
@@ -353,173 +342,31 @@ async def _call_llm(bot: Bot, log, db_factory, input_context: str = None) -> tup
             max_time_seconds=timeout,
             max_tool_calls=20,
         )
-
-        if result is not None and result.get("status") == "completed":
-            # Extract token usage from events
-            tokens_in, tokens_out = 0, 0
-            for event in result.get("events", []):
-                if event.get("type") == "complete" and event.get("usage"):
-                    tokens_in = event["usage"].get("input", 0)
-                    tokens_out = event["usage"].get("output", 0)
-                if event.get("type") == "tool_call":
-                    await log(f"🔧 {event['name']}({str(event.get('args', ''))[:80]})")
-                if event.get("type") == "complete":
-                    dur = event.get("durationMs", 0) / 1000
-                    tc = event.get("toolCalls", 0)
-                    await log(f"📊 {bot.model} | {tokens_in}→{tokens_out} tokens | {tc} tools | {dur:.1f}s")
-            return result.get("output", ""), tokens_in, tokens_out
-        elif result is not None and result.get("error"):
-            await log(f"⚠️ Engine: {result['error'][:200]}")
-            # Fall through to direct API mode
-        # If result is None, engine is unavailable — fall through
     except Exception as e:
-        await log(f"⚠️ Engine unavailable: {e}")
+        await log(f"⚠️ Engine error: {e}")
+        return f"Engine error: {e}", 0, 0
 
-    await log("⚡ Fallback: Direct API mode...")
+    if result is None:
+        await log("⚠️ Engine not available — is the Agent Runner Server running on :18810?")
+        return "Error: Agent Runner Engine not available. Start it with: systemctl start openorch-engine", 0, 0
 
-    db = db_factory()
-    try:
-        provider, key = _get_key_for_model(bot.model, db)
-        system_prompt = _build_context(bot, db)
-        brave_key = _get_setting(db, "brave_api_key")
-    finally:
-        db.close()
+    if result.get("status") == "completed":
+        tokens_in, tokens_out = 0, 0
+        for event in result.get("events", []):
+            if event.get("type") == "complete" and event.get("usage"):
+                tokens_in = event["usage"].get("input", 0)
+                tokens_out = event["usage"].get("output", 0)
+            if event.get("type") == "tool_call":
+                await log(f"🔧 {event['name']}({str(event.get('args', ''))[:80]})")
+            if event.get("type") == "complete":
+                dur = event.get("durationMs", 0) / 1000
+                tc = event.get("toolCalls", 0)
+                await log(f"📊 {bot.model} | {tokens_in}→{tokens_out} tokens | {tc} tools | {dur:.1f}s")
+        return result.get("output", ""), tokens_in, tokens_out
 
-    user_message = bot.prompt
-    if input_context:
-        user_message = f"Kontext vom vorherigen Schritt:\n\n{input_context}\n\nAufgabe: {bot.prompt}"
-
-    # Parse enabled tools
-    enabled_tools = []
-    try:
-        enabled_tools = _json.loads(bot.tools) if bot.tools else []
-    except Exception:
-        pass
-
-    tool_schemas = get_tool_schemas(enabled_tools, brave_key, bot.docs_path) if enabled_tools else []
-
-    if provider == "openai" and key:
-        await log(f"Verwende OpenAI ({bot.model})...")
-        import openai
-        client = openai.AsyncOpenAI(api_key=key)
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ]
-        total_in, total_out = 0, 0
-
-        for iteration in range(10):  # max 10 tool-call rounds
-            # GPT-5/o-series use max_completion_tokens, older models use max_tokens
-            token_key = "max_completion_tokens" if bot.model.startswith(("gpt-5", "o1", "o3", "o4")) else "max_tokens"
-            kwargs = {"model": bot.model, "messages": messages, token_key: 4000}
-            if tool_schemas and iteration < 8:
-                kwargs["tools"] = tool_schemas
-            resp = await client.chat.completions.create(**kwargs)
-            if resp.usage:
-                total_in += resp.usage.prompt_tokens
-                total_out += resp.usage.completion_tokens
-
-            choice = resp.choices[0]
-            if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
-                # Convert to dict to avoid pydantic serialization issues
-                messages.append(choice.message.model_dump())
-                for tc in choice.message.tool_calls:
-                    fn = tc.function.name
-                    args = _json.loads(tc.function.arguments) if tc.function.arguments else {}
-                    await log(f"🔧 Tool: {fn}({', '.join(f'{k}={v!r}' for k,v in args.items())})")
-                    result = await execute_tool_call(fn, args, enabled_tools, brave_key, bot.docs_path)
-                    messages.append({"role": "tool", "tool_call_id": tc.id, "content": result[:4000]})
-            else:
-                return choice.message.content or "", total_in, total_out
-
-        return messages[-1].get("content", "") if isinstance(messages[-1], dict) else "", total_in, total_out
-
-    elif provider == "anthropic" and key:
-        await log(f"Verwende Anthropic ({bot.model})...")
-        import anthropic
-        client = anthropic.AsyncAnthropic(api_key=key)
-
-        # Convert tool schemas to Anthropic format
-        anthro_tools = []
-        for ts in tool_schemas:
-            fn = ts["function"]
-            anthro_tools.append({
-                "name": fn["name"],
-                "description": fn["description"],
-                "input_schema": fn["parameters"],
-            })
-
-        messages = [{"role": "user", "content": user_message}]
-        total_in, total_out = 0, 0
-
-        for iteration in range(10):
-            kwargs = {"model": bot.model, "max_tokens": 4000, "system": system_prompt, "messages": messages}
-            if anthro_tools and iteration < 8:
-                kwargs["tools"] = anthro_tools
-            resp = await client.messages.create(**kwargs)
-            total_in += resp.usage.input_tokens
-            total_out += resp.usage.output_tokens
-
-            if resp.stop_reason == "tool_use":
-                messages.append({"role": "assistant", "content": resp.content})
-                tool_results = []
-                for block in resp.content:
-                    if block.type == "tool_use":
-                        await log(f"🔧 Tool: {block.name}({block.input})")
-                        result = await execute_tool_call(block.name, block.input, enabled_tools, brave_key, bot.docs_path)
-                        tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": result[:4000]})
-                messages.append({"role": "user", "content": tool_results})
-            else:
-                text = ""
-                for block in resp.content:
-                    if hasattr(block, "text"):
-                        text += block.text
-                return text, total_in, total_out
-
-        return "", total_in, total_out
-
-    elif provider == "google" and key:
-        await log(f"Verwende Google Gemini ({bot.model})...")
-        import google.generativeai as genai
-        genai.configure(api_key=key)
-        model = genai.GenerativeModel(bot.model, system_instruction=system_prompt)
-        resp = await asyncio.to_thread(model.generate_content, user_message)
-        tokens_in = resp.usage_metadata.prompt_token_count if hasattr(resp, 'usage_metadata') else 0
-        tokens_out = resp.usage_metadata.candidates_token_count if hasattr(resp, 'usage_metadata') else 0
-        return resp.text, tokens_in, tokens_out
-
-    elif provider == "mistral" and key:
-        await log(f"Verwende Mistral ({bot.model})...")
-        from mistralai import Mistral
-        client = Mistral(api_key=key)
-        resp = await asyncio.to_thread(
-            client.chat.complete, model=bot.model,
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
-        )
-        usage = resp.usage
-        return resp.choices[0].message.content, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0
-
-    elif provider == "ollama":
-        base_url = key if key != "ollama" else "http://localhost:11434"
-        await log(f"Verwende Ollama ({bot.model})...")
-        import openai
-        client = openai.AsyncOpenAI(base_url=f"{base_url}/v1", api_key="ollama")
-        resp = await client.chat.completions.create(
-            model=bot.model,
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
-        )
-        usage = resp.usage
-        return resp.choices[0].message.content, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0
-
-    else:
-        await log("⚠️ Kein API-Key konfiguriert — verwende Mock...")
-        await asyncio.sleep(1)
-        return (
-            f"[Mock] Kein API-Key für '{bot.model}' konfiguriert.\n"
-            f"Bitte in den Einstellungen einen Key hinterlegen.\n\n"
-            f"Bot: {bot.name}\nPrompt: {bot.prompt[:200]}",
-            0, 0
-        )
+    error = result.get("error", "Unknown error")
+    await log(f"⚠️ Engine: {error[:200]}")
+    return f"Error: {error}", 0, 0
 
 
 async def _notify_channels(bot, status: str, output: str, total_tokens: int, cost: float, db_factory):
