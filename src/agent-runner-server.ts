@@ -86,6 +86,50 @@ function getToolSchemas(enabledTools: string[]): Tool[] {
         prompt: Type.Optional(Type.String({ description: "What to analyze", default: "Describe this image." })),
       }),
     },
+    edit: {
+      name: "edit",
+      description: "Edit a file by replacing exact text. The old_string must match exactly (including whitespace).",
+      parameters: Type.Object({
+        path: Type.String({ description: "Path to the file to edit" }),
+        old_string: Type.String({ description: "Exact text to find and replace" }),
+        new_string: Type.String({ description: "New text to replace with" }),
+      }),
+    },
+    tts: {
+      name: "tts",
+      description: "Convert text to speech and save as audio file. Returns the file path.",
+      parameters: Type.Object({
+        text: Type.String({ description: "Text to convert to speech" }),
+        voice: Type.Optional(Type.String({ description: "Voice name (default: alloy)", default: "alloy" })),
+        output: Type.Optional(Type.String({ description: "Output file path (default: /tmp/tts-<timestamp>.mp3)" })),
+      }),
+    },
+    message: {
+      name: "message",
+      description: "Send a message to a channel (Telegram, Discord, etc). Requires channel to be configured in openOrchestrator settings.",
+      parameters: Type.Object({
+        channel_type: Type.Union([Type.Literal("telegram"), Type.Literal("webhook"), Type.Literal("discord")], { description: "Channel type" }),
+        text: Type.String({ description: "Message text to send" }),
+        chat_id: Type.Optional(Type.String({ description: "Chat/channel ID (uses default if not specified)" })),
+      }),
+    },
+    memory_search: {
+      name: "memory_search",
+      description: "Search through the bot's memory files for relevant information.",
+      parameters: Type.Object({
+        query: Type.String({ description: "Search query" }),
+        path: Type.Optional(Type.String({ description: "Directory to search in (default: bot workspace)" })),
+      }),
+    },
+    memory_get: {
+      name: "memory_get",
+      description: "Read a specific memory file or section of it.",
+      parameters: Type.Object({
+        path: Type.String({ description: "Path to memory file" }),
+        from: Type.Optional(Type.Number({ description: "Start line (1-indexed)" })),
+        lines: Type.Optional(Type.Number({ description: "Number of lines to read" })),
+      }),
+    },
   };
 
   return enabledTools.filter(t => allTools[t]).map(t => allTools[t]);
@@ -265,6 +309,80 @@ async function executeTool(name: string, args: Record<string, any>, apiKeys: Rec
         // Use the vision model to analyze the image
         // For now, return a placeholder — full implementation needs vision API
         return `Image analysis not yet implemented for standalone runner. Image: ${args.image}`;
+      }
+
+      case "edit": {
+        const content = await fs.readFile(args.path, "utf-8");
+        if (!content.includes(args.old_string)) {
+          return `Error: old_string not found in ${args.path}. Make sure it matches exactly (including whitespace).`;
+        }
+        const newContent = content.replace(args.old_string, args.new_string);
+        await fs.writeFile(args.path, newContent, "utf-8");
+        return `Edited ${args.path}: replaced ${args.old_string.length} chars with ${args.new_string.length} chars`;
+      }
+
+      case "tts": {
+        const openaiKey = apiKeys.OPENAI_API_KEY;
+        if (!openaiKey) return "Error: No OpenAI API key configured. Add OPENAI_API_KEY in Settings for TTS.";
+        const voice = args.voice || "alloy";
+        const outputPath = args.output || `/tmp/tts-${Date.now()}.mp3`;
+        const resp = await fetch("https://api.openai.com/v1/audio/speech", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "tts-1", input: args.text, voice }),
+        });
+        if (!resp.ok) return `TTS error: ${resp.status} ${await resp.text()}`;
+        const buf = Buffer.from(await resp.arrayBuffer());
+        await fs.writeFile(outputPath, buf);
+        return `Audio saved to ${outputPath} (${buf.length} bytes, voice: ${voice})`;
+      }
+
+      case "message": {
+        // Send via openOrchestrator backend API (which handles channel configs)
+        try {
+          const resp = await fetch("http://127.0.0.1:8080/api/message/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ channel_type: args.channel_type, text: args.text, chat_id: args.chat_id }),
+          });
+          if (!resp.ok) return `Message send failed: ${resp.status} ${await resp.text()}`;
+          return `Message sent via ${args.channel_type}`;
+        } catch (e: any) {
+          return `Message error: ${e.message}`;
+        }
+      }
+
+      case "memory_search": {
+        // Simple grep-based search through memory/workspace files
+        const searchDir = args.path || "/tmp/bot-workspace";
+        try {
+          const { stdout } = await execAsync(
+            `grep -ril --include="*.md" --include="*.txt" --include="*.json" ${JSON.stringify(args.query)} ${JSON.stringify(searchDir)} 2>/dev/null | head -10`,
+            { timeout: 5000 }
+          );
+          if (!stdout.trim()) return `No results found for "${args.query}" in ${searchDir}`;
+          // Read snippets from matching files
+          const files = stdout.trim().split("\n");
+          const results: string[] = [];
+          for (const file of files.slice(0, 5)) {
+            const { stdout: grepOut } = await execAsync(
+              `grep -n -i -C 2 ${JSON.stringify(args.query)} ${JSON.stringify(file)} | head -20`,
+              { timeout: 3000 }
+            );
+            results.push(`## ${file}\n${grepOut.trim()}`);
+          }
+          return results.join("\n\n");
+        } catch {
+          return `No results found for "${args.query}"`;
+        }
+      }
+
+      case "memory_get": {
+        const content = await fs.readFile(args.path, "utf-8");
+        const allLines = content.split("\n");
+        const from = (args.from || 1) - 1;
+        const count = args.lines || allLines.length;
+        return allLines.slice(from, from + count).join("\n");
       }
 
       default:
@@ -568,11 +686,16 @@ app.get("/tools", (_req, res) => {
     tools: [
       { name: "web_search", description: "Search the web (needs BRAVE_API_KEY)", group: "web" },
       { name: "web_fetch", description: "Fetch URL content as text", group: "web" },
-      { name: "browser", description: "Real browser control (Playwright)", group: "web" },
+      { name: "browser", description: "Real browser control (Playwright)", group: "browser" },
       { name: "exec", description: "Execute shell commands", group: "core" },
       { name: "read_file", description: "Read file contents", group: "core" },
       { name: "write_file", description: "Write files", group: "core" },
+      { name: "edit", description: "Precise text replacement in files", group: "core" },
       { name: "image", description: "Image analysis (vision)", group: "ai" },
+      { name: "tts", description: "Text-to-speech (needs OPENAI_API_KEY)", group: "ai" },
+      { name: "message", description: "Send messages to Telegram/Discord/Webhook", group: "communication" },
+      { name: "memory_search", description: "Search bot memory files", group: "memory" },
+      { name: "memory_get", description: "Read bot memory files", group: "memory" },
     ],
   });
 });

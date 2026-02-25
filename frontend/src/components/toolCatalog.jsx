@@ -1,4 +1,4 @@
-import { Terminal, Globe, Layout, Sparkles, MessageSquare, Zap } from 'lucide-react';
+import { Terminal, Globe, Layout, Sparkles, MessageSquare, Zap, Brain } from 'lucide-react';
 
 export const TOOL_GROUPS = [
   {
@@ -7,8 +7,8 @@ export const TOOL_GROUPS = [
     icon: <Terminal size={14} />,
     tools: [
       { value: 'exec', label: 'Shell', desc: 'Run shell commands' },
-      { value: 'read', label: 'Read', desc: 'Read files' },
-      { value: 'write', label: 'Write', desc: 'Create/overwrite files' },
+      { value: 'read_file', label: 'Read', desc: 'Read files' },
+      { value: 'write_file', label: 'Write', desc: 'Create/overwrite files' },
       { value: 'edit', label: 'Edit', desc: 'Precise text edits' },
     ],
   },
@@ -35,7 +35,16 @@ export const TOOL_GROUPS = [
     icon: <Sparkles size={14} />,
     tools: [
       { value: 'image', label: 'Vision', desc: 'Image analysis' },
-      { value: 'tts', label: 'TTS', desc: 'Text-to-speech' },
+      { value: 'tts', label: 'TTS', desc: 'Text-to-speech', needsKey: 'openai' },
+    ],
+  },
+  {
+    id: 'memory',
+    label: 'Memory',
+    icon: <Brain size={14} />,
+    tools: [
+      { value: 'memory_search', label: 'Search', desc: 'Search bot memory' },
+      { value: 'memory_get', label: 'Read', desc: 'Read memory files' },
     ],
   },
   {
@@ -65,7 +74,9 @@ export const ALL_TOOL_VALUES = ALL_TOOLS.map(t => t.value);
 // Legacy mapping for backwards compat (old tool names → new)
 export const LEGACY_TOOL_MAP = {
   code: 'exec',
-  files: 'write',
+  files: 'write_file',
+  read: 'read_file',
+  write: 'write_file',
 };
 
 export function normalizeBotTools(tools) {

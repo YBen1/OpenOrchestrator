@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import engine, Base, SessionLocal, get_db
-from models import Bot, Run, Result, Trigger, Setting, Pipeline, WaitlistEntry, TelegramLink, Credential, BotCredential, new_id, utcnow
+from models import Bot, Run, Result, Trigger, Setting, Pipeline, WaitlistEntry, TelegramLink, Credential, BotCredential, Channel, new_id, utcnow
 import telegram_bot
 from schemas import BotCreate, BotUpdate, BotOut, TriggerCreate, TriggerOut, RunOut, ResultOut
 from bot_runner import run_bot, ws_connections, active_tasks
@@ -690,6 +690,44 @@ def waitlist_signup(data: dict, db: Session = Depends(get_db)):
 def waitlist_list(db: Session = Depends(get_db)):
     entries = db.query(WaitlistEntry).order_by(WaitlistEntry.created_at.desc()).all()
     return [{"email": e.email, "created_at": e.created_at.isoformat()} for e in entries]
+
+
+# ── Message Send (for Engine tool) ────────────────────────
+
+@app.post("/api/message/send")
+async def message_send(data: dict, db: Session = Depends(get_db)):
+    """Send a message via configured channel. Used by the TS engine's message tool."""
+    from channels import send_telegram, send_webhook
+    channel_type = data.get("channel_type", "")
+    text = data.get("text", "")
+    chat_id = data.get("chat_id")
+
+    if not text:
+        raise HTTPException(400, "text is required")
+
+    # Find a connected channel of the requested type
+    channels = db.query(Channel).filter(Channel.type == channel_type, Channel.status == "connected").all()
+    if not channels:
+        raise HTTPException(404, f"No connected {channel_type} channel found")
+
+    import json as _json
+    ch = channels[0]
+    cfg = _json.loads(ch.config)
+
+    if channel_type == "telegram":
+        target_chat = chat_id or cfg.get("chat_id")
+        if not target_chat:
+            raise HTTPException(400, "No chat_id configured for Telegram channel")
+        result = await send_telegram(cfg["bot_token"], str(target_chat), text)
+        return {"status": "sent", "channel": ch.name, "result": result}
+    elif channel_type == "webhook":
+        url = cfg.get("url")
+        if not url:
+            raise HTTPException(400, "No URL configured for webhook channel")
+        result = await send_webhook(url, {"text": text, "source": "openOrchestrator"})
+        return {"status": "sent", "channel": ch.name}
+    else:
+        raise HTTPException(400, f"Unsupported channel type: {channel_type}")
 
 
 # ── Credentials Vault ────────────────────────────────────
