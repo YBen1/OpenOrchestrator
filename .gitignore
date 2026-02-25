@@ -8,3 +8,4 @@ bot-data/
 backend/.credential_key
 .env.engine
 .master.key
+workspaces/

@@ -408,9 +408,94 @@ async function executeTool(name: string, args: Record<string, any>, apiKeys: Rec
       }
 
       case "image": {
-        // Use the vision model to analyze the image
-        // For now, return a placeholder — full implementation needs vision API
-        return `Image analysis not yet implemented for standalone runner. Image: ${args.image}`;
+        const openaiKey = apiKeys.OPENAI_API_KEY;
+        const anthropicKey = apiKeys.ANTHROPIC_API_KEY;
+        const googleKey = apiKeys.GOOGLE_API_KEY;
+        const imageInput = args.image;
+        const prompt = args.prompt || "Describe this image in detail.";
+
+        // Determine image content: URL or file path
+        let imageUrl = imageInput;
+        let base64Data: string | null = null;
+        if (!imageInput.startsWith("http")) {
+          // Local file — read and base64 encode
+          try {
+            const buf = await fs.readFile(imageInput);
+            const ext = imageInput.split(".").pop()?.toLowerCase() || "png";
+            const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" : "image/png";
+            base64Data = `data:${mime};base64,${buf.toString("base64")}`;
+          } catch (e: any) {
+            return `Error reading image file: ${e.message}`;
+          }
+        }
+
+        // Try OpenAI Vision first
+        if (openaiKey) {
+          try {
+            const content: any[] = [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: base64Data || imageUrl } },
+            ];
+            const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content }], max_tokens: 1000 }),
+            });
+            if (resp.ok) {
+              const data = await resp.json() as any;
+              return data.choices?.[0]?.message?.content || "No response from vision model.";
+            }
+          } catch { /* fall through */ }
+        }
+
+        // Try Anthropic Vision
+        if (anthropicKey) {
+          try {
+            const imgSource = base64Data
+              ? { type: "base64", media_type: base64Data.split(";")[0].split(":")[1], data: base64Data.split(",")[1] }
+              : { type: "url", url: imageUrl };
+            const resp = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: {
+                "x-api-key": anthropicKey,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 1000,
+                messages: [{ role: "user", content: [{ type: "image", source: imgSource }, { type: "text", text: prompt }] }],
+              }),
+            });
+            if (resp.ok) {
+              const data = await resp.json() as any;
+              return data.content?.map((b: any) => b.text).join("") || "No response.";
+            }
+          } catch { /* fall through */ }
+        }
+
+        // Try Google Gemini Vision
+        if (googleKey) {
+          try {
+            const parts: any[] = [{ text: prompt }];
+            if (base64Data) {
+              parts.push({ inline_data: { mime_type: base64Data.split(";")[0].split(":")[1], data: base64Data.split(",")[1] } });
+            } else {
+              parts.push({ file_data: { file_uri: imageUrl, mime_type: "image/jpeg" } });
+            }
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleKey}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ contents: [{ parts }] }),
+            });
+            if (resp.ok) {
+              const data = await resp.json() as any;
+              return data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") || "No response.";
+            }
+          } catch { /* fall through */ }
+        }
+
+        return "Error: No vision-capable API key configured. Add OpenAI, Anthropic, or Google API key in Settings.";
       }
 
       case "edit": {
@@ -554,9 +639,20 @@ async function executeTool(name: string, args: Record<string, any>, apiKeys: Rec
       }
 
       case "sessions_spawn": {
+        // Run in background — don't block the bot's tool loop
         const model = args.model ? `--model "${args.model}"` : "";
         const label = args.label ? `--label "${args.label}"` : "";
-        return await openclawCli(`agent -m "${args.task}" ${model} ${label} --deliver`, 60000);
+        const sessionId = `spawn-${Date.now()}`;
+        const tokenArg = GATEWAY_TOKEN ? `--token ${GATEWAY_TOKEN}` : "";
+        const cmd = `openclaw agent -m "${args.task.replace(/"/g, '\\"')}" ${model} ${label} --deliver ${tokenArg}`;
+        const { spawn } = await import("node:child_process");
+        const proc = spawn("bash", ["-c", cmd], { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, OPENCLAW_GATEWAY_TOKEN: GATEWAY_TOKEN } });
+        const entry = { proc, output: [] as string[], done: false, exitCode: null as number | null };
+        proc.stdout?.on("data", (d: Buffer) => entry.output.push(d.toString()));
+        proc.stderr?.on("data", (d: Buffer) => entry.output.push(d.toString()));
+        proc.on("close", (code: number) => { entry.done = true; entry.exitCode = code; });
+        bgProcesses.set(sessionId, entry);
+        return `Sub-agent spawned in background (session: ${sessionId}). Use process tool with action=poll/log to check progress.`;
       }
 
       case "subagents": {

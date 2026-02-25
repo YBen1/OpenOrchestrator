@@ -60,11 +60,40 @@ def _get_key_for_model(model: str, db) -> tuple:
         return "openai", _get_setting(db, "openai_api_key")
 
 
+def _get_bot_workspace(bot: Bot) -> str:
+    """Get or create a persistent workspace directory for the bot."""
+    workspace = f"/srv/openOrchestrator/workspaces/{bot.id}"
+    os.makedirs(workspace, exist_ok=True)
+    # Create MEMORY.md if it doesn't exist
+    memory_path = os.path.join(workspace, "MEMORY.md")
+    if not os.path.exists(memory_path):
+        with open(memory_path, "w") as f:
+            f.write(f"# Memory — {bot.name}\n\nThis file persists between runs. Write anything you want to remember.\n")
+    return workspace
+
+
 def _build_context(bot: Bot, db) -> str:
-    """Build system context with bot memory (last output + docs)."""
+    """Build system context with bot memory (last output + docs + persistent workspace)."""
     parts = []
+    workspace = _get_bot_workspace(bot)
+
     if bot.description:
         parts.append(f"Du bist {bot.name}. {bot.description}")
+
+    # Persistent workspace info
+    parts.append(f"\n## Your Workspace\nYour persistent workspace is at: {workspace}")
+    parts.append("Files you write here persist between runs. Use MEMORY.md to remember things.")
+
+    # Load MEMORY.md if it has content beyond the template
+    memory_path = os.path.join(workspace, "MEMORY.md")
+    try:
+        with open(memory_path, "r", encoding="utf-8") as f:
+            memory_content = f.read().strip()
+        # Only include if there's actual content (more than the template)
+        if memory_content and len(memory_content) > 100:
+            parts.append(f"\n## Your Memory (MEMORY.md)\n{memory_content[:4000]}")
+    except Exception:
+        pass
 
     # Last run output
     last_run = db.query(Run).filter(
@@ -88,6 +117,14 @@ def _build_context(bot: Bot, db) -> str:
                     pass
         if docs_content:
             parts.append(f"\nDeine gespeicherten Notizen:\n" + "\n".join(docs_content)[:4000])
+
+    # List other files in workspace (so bot knows what's available)
+    try:
+        ws_files = [f for f in os.listdir(workspace) if not f.startswith('.')]
+        if ws_files:
+            parts.append(f"\n## Workspace files: {', '.join(ws_files[:20])}")
+    except Exception:
+        pass
 
     return "\n".join(parts) if parts else f"Du bist {bot.name}."
 
