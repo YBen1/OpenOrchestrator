@@ -179,7 +179,8 @@ export default function App() {
           <Settings onBack={() => { nav('dashboard'); checkKeys(); }} />
         ) : (
           <BotDetail botId={view.botId} onBack={() => nav('dashboard')}
-            onRefresh={refresh} onEdit={(bot) => setEditBot(bot)} />
+            onRefresh={refresh} onEdit={(bot) => setEditBot(bot)}
+            onSelect={(id) => { refresh(); setView({ page: 'detail', botId: id }); }} />
         )}
       </main>
 

@@ -521,7 +521,9 @@ def export_bot(bot_id: str, db: Session = Depends(get_db)):
     if not bot:
         raise HTTPException(404)
     runs = db.query(Run).filter(Run.bot_id == bot_id, Run.status == "completed").order_by(Run.started_at.desc()).limit(10).all()
-    return {
+    from fastapi.responses import JSONResponse
+    safe_name = bot.name.replace('"', "").replace("\\", "")
+    export_data = {
         "version": "1.0",
         "bot": {
             "name": bot.name, "emoji": bot.emoji, "description": bot.description,
@@ -536,6 +538,9 @@ def export_bot(bot_id: str, db: Session = Depends(get_db)):
             "tokens": (r.tokens_in or 0) + (r.tokens_out or 0),
         } for r in runs],
     }
+    return JSONResponse(content=export_data, headers={
+        "Content-Disposition": f'attachment; filename="{safe_name}.json"',
+    })
 
 
 @app.post("/api/bots/import")

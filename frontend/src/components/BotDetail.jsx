@@ -102,7 +102,7 @@ function DocsTab({ botId }) {
   );
 }
 
-export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
+export default function BotDetail({ botId, onBack, onRefresh, onEdit, onSelect }) {
   const [bot, setBot] = useState(null);
   const [runs, setRuns] = useState([]);
   const [results, setResults] = useState([]);
@@ -175,6 +175,12 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
             Object.assign(document.createElement('a'), { href: url, download: `${bot.name}.json` }).click();
           }} className="btn-ghost" title="Export bot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
             <Download size={16} strokeWidth={1.5} />
+          </button>
+          <button onClick={async () => {
+            const dup = await api.duplicateBot(botId);
+            if (dup && dup.id) { if (onSelect) {onSelect(dup.id);} else { onBack(); setTimeout(() => onRefresh && onRefresh(), 100); } }
+          }} className="btn-ghost" title="Duplicate bot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
+            <Copy size={16} strokeWidth={1.5} />
           </button>
           <a href={api.exportCsv(botId)} className="btn-ghost" title="Export CSV" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
             <BarChart3 size={16} strokeWidth={1.5} />

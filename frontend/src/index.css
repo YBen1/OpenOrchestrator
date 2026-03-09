@@ -426,3 +426,10 @@ textarea.input-apple {
 }
 
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+/* Stats grid responsive */
+@media (max-width: 640px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}

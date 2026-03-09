@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bot, Loader2, XCircle, ArrowRight, X, Plus } from 'lucide-react';
+import { Bot, Loader2, XCircle } from 'lucide-react';
 import BotCard from './BotCard';
 import BotEmoji from './BotEmoji';
-import { api } from '../api';
 
 export default function Dashboard({ bots, activity, triggers, onSelect, onRun, onEdit, onRefresh }) {
   const [botStatuses, setBotStatuses] = useState({});
@@ -54,8 +53,14 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         </p>
       </div>
 
+      <StatsCards activity={activity} />
+      <ActivityTimeline activity={activity} onSelect={onSelect} />
+
       <section style={{ marginBottom: 48 }}>
-        <SectionHeader title="My Bots" count={bots.length} />
+        <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+          <SectionHeader title="My Bots" count={bots.length} />
+          <ImportBotButton onImported={onRefresh} />
+        </div>
         {bots.length === 0 ? (
           <div className="card empty-state">
             <p className="empty-icon" style={{ display: 'flex', justifyContent: 'center' }}><Bot size={40} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} /></p>
@@ -75,134 +80,203 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         )}
       </section>
 
-      <AutomationsSection bots={bots} triggers={triggers} onRefresh={onRefresh} />
+      {triggers.length > 0 && (
+        <section style={{ marginBottom: 48 }}>
+          <SectionHeader title="Connections" count={triggers.length} />
+          <div className="card" style={{ overflow: 'hidden' }}>
+            {triggers.map((t, i) => {
+              const src = bots.find(b => b.id === t.source_bot);
+              const tgt = bots.find(b => b.id === t.target_bot);
+              return (
+                <div key={t.id} style={{
+                  padding: '14px 20px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  fontSize: 14,
+                  borderTop: i > 0 ? '1px solid var(--divider)' : 'none',
+                }}>
+                  <Chip label={src?.name || t.source_bot} emoji={src?.emoji} />
+                  <span style={{
+                    color: 'var(--text-quaternary)', fontSize: 11, fontWeight: 600,
+                    letterSpacing: '0.04em', textTransform: 'uppercase',
+                  }}>{t.event}</span>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M3 8h10M10 5l3 3-3 3" stroke="var(--text-quaternary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <Chip label={tgt?.name || t.target_bot} emoji={tgt?.emoji} />
+                  {!t.enabled && (
+                    <span style={{
+                      marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)',
+                      background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: 6,
+                    }}>Paused</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <ActivityFeed activity={activity} onSelect={onSelect} />
     </div>
   );
 }
 
+/* ─── Stats Cards ─── */
 
-function AutomationsSection({ bots, triggers, onRefresh }) {
-  const [showForm, setShowForm] = useState(false);
-  const [sourceBot, setSourceBot] = useState('');
-  const [event, setEvent] = useState('completed');
-  const [targetBot, setTargetBot] = useState('');
-  const [creating, setCreating] = useState(false);
+function formatNumber(n) {
+  if (n >= 1_000_000) {return (n / 1_000_000).toFixed(1) + 'M';}
+  if (n >= 1_000) {return (n / 1_000).toFixed(1) + 'k';}
+  return String(n);
+}
 
-  const handleCreate = async () => {
-    if (!sourceBot || !targetBot) {return;}
-    setCreating(true);
-    try {
-      await api.createTrigger({ source_bot: sourceBot, event, target_bot: targetBot, target_action: 'start' });
-      setShowForm(false);
-      setSourceBot(''); setEvent('completed'); setTargetBot('');
-      if (onRefresh) {onRefresh();}
-    } catch (e) { console.error(e); }
-    setCreating(false);
-  };
+function StatsCards({ activity }) {
+  if (!activity || activity.length === 0) {return null;}
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this automation?')) {return;}
-    try {
-      await api.deleteTrigger(id);
-      if (onRefresh) {onRefresh();}
-    } catch (e) { console.error(e); }
-  };
+  const total = activity.length;
+  const completed = activity.filter(a => a.status === 'completed').length;
+  const rate = total > 0 ? (completed / total) * 100 : 0;
+  const rateColor = rate > 90 ? '#248A3D' : rate >= 70 ? '#B25000' : '#D70015';
+  const totalTokens = activity.reduce((s, a) => s + (a.tokens_used || ((a.tokens_in || 0) + (a.tokens_out || 0)) || 0), 0);
+  const totalCost = activity.reduce((s, a) => s + (a.cost_estimate || 0), 0);
 
-  const selectStyle = {
-    background: 'var(--bg-tertiary)', border: '1px solid var(--divider)',
-    borderRadius: 10, padding: '8px 12px', fontSize: 13, color: 'var(--text-primary)',
-    outline: 'none', flex: 1, minWidth: 0,
-  };
+  const cards = [
+    { label: 'Total Runs', value: String(total), color: '#007AFF' },
+    { label: 'Success Rate', value: rate.toFixed(1) + '%', color: rateColor },
+    { label: 'Total Tokens', value: formatNumber(totalTokens), color: '#8B5CF6' },
+    { label: 'Total Cost', value: '$' + totalCost.toFixed(2), color: '#F97316' },
+  ];
 
   return (
-    <section style={{ marginBottom: 48 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-          Automations
-        </h2>
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>{triggers.length}</span>
-        <button onClick={() => setShowForm(!showForm)} style={{
-          marginLeft: 'auto', background: 'none', border: '1px solid var(--divider)',
-          borderRadius: 10, padding: '6px 14px', fontSize: 13, fontWeight: 600,
-          color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-        }}>
-          <Plus size={14} /> Add Automation
-        </button>
-      </div>
-
-      {showForm && (
-        <div className="card" style={{ padding: 20, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0 }}>When</span>
-          <select value={sourceBot} onChange={e => setSourceBot(e.target.value)} style={selectStyle}>
-            <option value="">Select bot…</option>
-            {bots.map(b => <option key={b.id} value={b.id}>{b.emoji || '🤖'} {b.name}</option>)}
-          </select>
-          <select value={event} onChange={e => setEvent(e.target.value)} style={selectStyle}>
-            <option value="completed">completes</option>
-            <option value="failed">fails</option>
-          </select>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0 }}>then run</span>
-          <select value={targetBot} onChange={e => setTargetBot(e.target.value)} style={selectStyle}>
-            <option value="">Select bot…</option>
-            {bots.map(b => <option key={b.id} value={b.id}>{b.emoji || '🤖'} {b.name}</option>)}
-          </select>
-          <button onClick={handleCreate} disabled={!sourceBot || !targetBot || creating} style={{
-            background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10,
-            padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            opacity: (!sourceBot || !targetBot || creating) ? 0.5 : 1, flexShrink: 0,
+    <section style={{ marginBottom: 32 }}>
+      <div className="stats-grid" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: 16,
+      }}>
+        {cards.map(c => (
+          <div key={c.label} style={{
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
+            borderLeft: `4px solid ${c.color}`,
+            borderRadius: 16,
+            padding: 20,
           }}>
-            {creating ? 'Creating…' : 'Create'}
-          </button>
-        </div>
-      )}
-
-      {triggers.length === 0 ? (
-        <div className="card" style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
-          No automations yet — connect your bots!
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {triggers.map(t => {
-            const src = bots.find(b => b.id === t.source_bot);
-            const tgt = bots.find(b => b.id === t.target_bot);
-            const isCompleted = t.event === 'completed';
-            return (
-              <div key={t.id} className="card" style={{
-                padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, fontSize: 14,
-              }}>
-                <Chip label={src?.name || t.source_bot} emoji={src?.emoji} />
-                <span style={{
-                  fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
-                  padding: '3px 8px', borderRadius: 6,
-                  background: isCompleted ? 'rgba(36,138,61,0.12)' : 'rgba(215,0,21,0.12)',
-                  color: isCompleted ? '#248A3D' : '#D70015',
-                }}>
-                  on {t.event}
-                </span>
-                <ArrowRight size={16} style={{ color: 'var(--text-quaternary)', flexShrink: 0 }} />
-                <Chip label={tgt?.name || t.target_bot} emoji={tgt?.emoji} />
-                <button onClick={() => handleDelete(t.id)} style={{
-                  marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--text-tertiary)', padding: 4, borderRadius: 6, display: 'flex',
-                }} title="Delete automation">
-                  <X size={16} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>
+              {c.value}
+            </div>
+            <div style={{
+              fontSize: 12, color: 'var(--text-tertiary)',
+              textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4,
+            }}>
+              {c.label}
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
+
+/* ─── Activity Timeline ─── */
+
+function relativeTime(dateStr) {
+  if (!dateStr) {return '';}
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) {return 'just now';}
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) {return `${mins}m ago`;}
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) {return `${hrs}h ago`;}
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+const PILL_STYLES = {
+  completed: { bg: '#248A3D22', color: '#248A3D' },
+  failed:    { bg: '#D7001522', color: '#D70015' },
+  running:   { bg: '#007AFF22', color: '#007AFF' },
+  cancelled: { bg: '#88888822', color: '#888888' },
+  timeout:   { bg: '#C9340022', color: '#C93400' },
+};
+
+function ActivityTimeline({ activity, onSelect }) {
+  if (!activity || activity.length === 0) {return null;}
+  const recent = activity.slice(0, 10);
+
+  return (
+    <section style={{ marginBottom: 32 }}>
+      <SectionHeader title="Recent Activity" count={recent.length} />
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {recent.map((a, i) => {
+          const pill = PILL_STYLES[a.status] || PILL_STYLES.cancelled;
+          const tokens = a.tokens_used || ((a.tokens_in || 0) + (a.tokens_out || 0)) || 0;
+          return (
+            <div key={a.id} style={{
+              padding: '10px 20px',
+              display: 'flex', alignItems: 'center', gap: 10,
+              fontSize: 13,
+              borderTop: i > 0 ? '1px solid var(--divider)' : 'none',
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              onClick={() => a.bot_id && onSelect(a.bot_id)}
+            >
+              <BotEmoji emoji={a.bot_emoji} name={a.bot_name} size={22} />
+              <span style={{
+                fontWeight: 600, minWidth: 80, maxWidth: 120,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{a.bot_name}</span>
+              <span style={{
+                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6,
+                background: pill.bg, color: pill.color,
+              }}>{a.status}</span>
+              <span style={{ color: 'var(--text-tertiary)', fontSize: 12, marginLeft: 'auto', flexShrink: 0 }}>
+                {tokens > 0 && <span style={{ marginRight: 10 }}>{formatNumber(tokens)} tok</span>}
+                {relativeTime(a.started_at)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/* ─── Helpers ─── */
 
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) {return 'Good Morning';}
   if (h < 18) {return 'Good Afternoon';}
   return 'Good Evening';
+}
+
+function ImportBotButton({ onImported }) {
+  const fileRef = useRef(null);
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) {return;}
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      await api.importBot(data);
+      if (onImported) {onImported();}
+    } catch (err) {
+      alert('Import failed: ' + err.message);
+    }
+    if (fileRef.current) {fileRef.current.value = '';}
+  };
+  return (
+    <>
+      <input type="file" accept=".json" ref={fileRef} onChange={handleImport} style={{ display: 'none' }} />
+      <button onClick={() => fileRef.current?.click()} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}>
+        <Upload size={14} strokeWidth={1.5} /> Import Bot
+      </button>
+    </>
+  );
 }
 
 function SectionHeader({ title, count }) {
@@ -250,7 +324,7 @@ function ActivityFeed({ activity, onSelect }) {
 
   return (
     <section>
-      <SectionHeader title="Recent Activity" count={activity.length} />
+      <SectionHeader title="Activity Log" count={activity.length} />
       <div className="card" style={{ overflow: 'hidden' }}>
         {activity.map((a, i) => {
           const s = STATUS[a.status] || STATUS.cancelled;
