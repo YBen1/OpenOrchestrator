@@ -392,27 +392,69 @@ def delete_trigger(trigger_id: str, db: Session = Depends(get_db)):
 
 # ── Bot Docs ──────────────────────────────────────────────
 
+def _docs_dir(bot_id: str) -> str:
+    d = os.path.join(BOT_DATA, bot_id)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _file_info(filepath: str) -> dict:
+    from datetime import datetime, timezone
+    st = os.stat(filepath)
+    return {
+        "name": os.path.basename(filepath),
+        "size_bytes": st.st_size,
+        "modified_at": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
+    }
+
+
 @app.get("/api/bots/{bot_id}/docs")
-def list_docs(bot_id: str, db: Session = Depends(get_db)):
-    bot = db.query(Bot).get(bot_id)
-    if not bot or not bot.docs_path:
-        return []
-    if not os.path.isdir(bot.docs_path):
-        return []
-    return [{"name": f} for f in os.listdir(bot.docs_path)]
+def list_docs(bot_id: str):
+    d = _docs_dir(bot_id)
+    files = []
+    for name in os.listdir(d):
+        fp = os.path.join(d, name)
+        if os.path.isfile(fp):
+            files.append(_file_info(fp))
+    files.sort(key=lambda f: f["modified_at"], reverse=True)
+    return files
 
 
 @app.post("/api/bots/{bot_id}/docs")
-async def upload_doc(bot_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    bot = db.query(Bot).get(bot_id)
-    if not bot or not bot.docs_path:
-        raise HTTPException(404)
-    os.makedirs(bot.docs_path, exist_ok=True)
-    path = os.path.join(bot.docs_path, file.filename)
+async def upload_doc(bot_id: str, file: UploadFile = File(...)):
     content = await file.read()
-    with open(path, "wb") as f:
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(413, "File too large (max 5 MB)")
+    filename = os.path.basename(file.filename)
+    if not filename:
+        raise HTTPException(400, "Invalid filename")
+    d = _docs_dir(bot_id)
+    filepath = os.path.join(d, filename)
+    with open(filepath, "wb") as f:
         f.write(content)
-    return {"name": file.filename, "size": len(content)}
+    return _file_info(filepath)
+
+
+@app.delete("/api/bots/{bot_id}/docs/{filename}")
+def delete_doc(bot_id: str, filename: str):
+    filename = os.path.basename(filename)
+    filepath = os.path.join(_docs_dir(bot_id), filename)
+    if not os.path.isfile(filepath):
+        raise HTTPException(404, "File not found")
+    os.remove(filepath)
+    return {"deleted": True}
+
+
+@app.get("/api/bots/{bot_id}/docs/{filename}")
+def get_doc(bot_id: str, filename: str):
+    from fastapi.responses import PlainTextResponse
+    filename = os.path.basename(filename)
+    filepath = os.path.join(_docs_dir(bot_id), filename)
+    if not os.path.isfile(filepath):
+        raise HTTPException(404, "File not found")
+    with open(filepath, "r", errors="replace") as f:
+        content = f.read(1024 * 1024)  # max 1MB
+    return PlainTextResponse(content)
 
 
 # ── WebSocket ─────────────────────────────────────────────

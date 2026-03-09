@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Play, Pencil, Copy } from 'lucide-react';
 import { api } from '../api';
 import BotEmoji from './BotEmoji';
@@ -14,10 +15,33 @@ const STATUS_COLORS = {
   failed:    '#FF3B30',
 };
 
-export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
-  const disabled = bot.enabled === false;
+export default function BotCard({ bot, liveStatus, onSelect, onRun, onEdit, onRefresh }) {
+  const [localEnabled, setLocalEnabled] = useState(bot.enabled !== false);
+  const disabled = !localEnabled;
   const statusColor = STATUS_COLORS[bot.last_status] || 'var(--text-quaternary)';
   const isRunning = bot.last_status === 'running';
+
+  const LIVE_DOT = {
+    running:   { bg: '#007AFF', anim: 'pulse 1.5s infinite' },
+    failed:    { bg: '#FF3B30', anim: 'none' },
+    error:     { bg: '#FF3B30', anim: 'none' },
+    completed: { bg: '#34C759', anim: 'none' },
+  };
+  const liveDot = LIVE_DOT[liveStatus] || { bg: '#34C759', anim: 'none' };
+
+  const handleToggle = async (e) => {
+    e.stopPropagation();
+    const next = !localEnabled;
+    setLocalEnabled(next);
+    try {
+      await fetch(`/api/bots/${bot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (onRefresh) {onRefresh();}
+    } catch { setLocalEnabled(!next); }
+  };
 
   return (
     <div
@@ -28,7 +52,8 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
         borderRadius: 18,
         padding: '20px 20px 16px',
         cursor: 'pointer',
-        opacity: disabled ? 0.5 : 1,
+        opacity: disabled ? 0.6 : 1,
+        filter: disabled ? 'grayscale(0.3)' : 'none',
         transition: 'all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
         boxShadow: 'var(--shadow-sm)',
         position: 'relative',
@@ -43,10 +68,34 @@ export default function BotCard({ bot, onSelect, onRun, onEdit, onRefresh }) {
         e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
       }}
     >
+      {/* Enable/Disable Toggle */}
+      <label onClick={handleToggle} style={{
+        position: 'absolute', top: 12, right: 12, zIndex: 2,
+        width: 44, height: 24, cursor: 'pointer',
+      }}>
+        <input type="checkbox" checked={localEnabled} readOnly style={{ display: 'none' }} />
+        <span style={{
+          display: 'block', width: 44, height: 24, borderRadius: 12,
+          background: localEnabled ? '#34C759' : '#636366',
+          transition: 'background 0.2s', position: 'relative',
+        }}>
+          <span style={{
+            position: 'absolute', top: 2, left: localEnabled ? 22 : 2,
+            width: 20, height: 20, borderRadius: '50%', background: '#fff',
+            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          }} />
+        </span>
+      </label>
+
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
         <BotEmoji emoji={bot.emoji} name={bot.name} size={40} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: liveDot.bg, animation: liveDot.anim,
+              flexShrink: 0,
+            }} />
             <h3 style={{
               fontSize: 15, fontWeight: 600, lineHeight: 1.3, margin: 0,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',

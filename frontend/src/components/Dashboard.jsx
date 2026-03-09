@@ -1,9 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bot, Loader2, XCircle } from 'lucide-react';
 import BotCard from './BotCard';
 import BotEmoji from './BotEmoji';
 
 export default function Dashboard({ bots, activity, triggers, onSelect, onRun, onEdit, onRefresh }) {
+  const [botStatuses, setBotStatuses] = useState({});
+  const wsRefs = useRef({});
+
+  useEffect(() => {
+    Object.keys(wsRefs.current).forEach(id => {
+      if (!bots.find(b => String(b.id) === String(id))) {
+        wsRefs.current[id].close();
+        delete wsRefs.current[id];
+      }
+    });
+    bots.forEach(bot => {
+      if (wsRefs.current[bot.id]) {return;}
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const ws = new WebSocket(`${proto}://${location.host}/ws/bots/${bot.id}`);
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'status' && msg.status) {
+            setBotStatuses(prev => ({ ...prev, [bot.id]: msg.status }));
+            if (msg.status === 'completed' && onRefresh) {onRefresh();}
+          }
+          if (msg.type === 'run_complete' && onRefresh) {onRefresh();}
+        } catch {}
+      };
+      ws.onclose = () => { delete wsRefs.current[bot.id]; };
+      wsRefs.current[bot.id] = ws;
+    });
+    return () => {
+      Object.values(wsRefs.current).forEach(ws => ws.close());
+      wsRefs.current = {};
+    };
+  }, [bots]);
+
   return (
     <div style={{ paddingTop: 8 }}>
       <div style={{ marginBottom: 40 }}>
@@ -35,7 +68,7 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
             gap: 18,
           }}>
             {bots.map(bot => (
-              <BotCard key={bot.id} bot={bot} onSelect={onSelect} onRun={onRun} onEdit={onEdit} onRefresh={onRefresh} />
+              <BotCard key={bot.id} bot={bot} liveStatus={botStatuses[bot.id]} onSelect={onSelect} onRun={onRun} onEdit={onEdit} onRefresh={onRefresh} />
             ))}
           </div>
         )}

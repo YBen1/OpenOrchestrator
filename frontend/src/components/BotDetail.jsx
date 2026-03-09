@@ -3,20 +3,118 @@ import { ArrowLeft, Play, Pencil, Download, BarChart3, Trash2, RefreshCw, FileTe
 import ReactMarkdown from 'react-markdown';
 import { api, connectWs } from '../api';
 
+function formatSize(bytes) {
+  if (bytes < 1024) {return bytes + ' B';}
+  if (bytes < 1024 * 1024) {return (bytes / 1024).toFixed(1) + ' KB';}
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function DocsTab({ botId }) {
+    const [expandedDoc, setExpandedDoc] = useState(null);
+  const [docContent, setDocContent] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  const loadDocs = async () => {
+    const res = await fetch(`/api/bots/${botId}/docs`);
+    if (res.ok) {setDocs(await res.json());}
+  };
+
+  useEffect(() => { loadDocs(); }, [botId]);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) {return;}
+    if (file.size > 5 * 1024 * 1024) { alert('File too large (max 5 MB)'); return; }
+    setUploading(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch(`/api/bots/${botId}/docs`, { method: 'POST', body: fd });
+      if (!res.ok) {throw new Error(await res.text());}
+      await loadDocs();
+    } catch (err) { alert('Upload failed: ' + err.message); }
+    setUploading(false);
+    if (fileRef.current) {fileRef.current.value = '';}
+  };
+
+  const handleDelete = async (name) => {
+    if (!confirm(`Delete "${name}"?`)) {return;}
+    await fetch(`/api/bots/${botId}/docs/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    if (expandedDoc === name) { setExpandedDoc(null); setDocContent(''); }
+    await loadDocs();
+  };
+
+  const toggleContent = async (name) => {
+    if (expandedDoc === name) { setExpandedDoc(null); setDocContent(''); return; }
+    const res = await fetch(`/api/bots/${botId}/docs/${encodeURIComponent(name)}`);
+    if (res.ok) { setDocContent(await res.text()); setExpandedDoc(name); }
+  };
+
+  return (
+    <div className="card" style={{ padding: 20 }}>
+      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+        <span style={{ fontSize: 14, fontWeight: 600 }}>{docs.length} Document{docs.length !== 1 ? 's' : ''}</span>
+        <div>
+          <input type="file" ref={fileRef} onChange={handleUpload} style={{ display: 'none' }} />
+          <button onClick={() => fileRef.current?.click()} className="btn-primary" disabled={uploading}
+            style={{ fontSize: 13, padding: '6px 14px' }}>
+            {uploading ? 'Uploading...' : '+ Upload Document'}
+          </button>
+        </div>
+      </div>
+      {docs.length === 0 ? (
+        <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14, padding: 20 }}>No documents yet. Upload one to get started.</p>
+      ) : (
+        <div>
+          {docs.map(d => (
+            <div key={d.name}>
+              <div className="flex items-center gap-3" style={{
+                padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 14,
+              }}>
+                <FileText size={14} strokeWidth={1.5} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
+                <button onClick={() => toggleContent(d.name)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)',
+                  fontWeight: 500, textAlign: 'left', padding: 0, fontSize: 14,
+                }}>{d.name}</button>
+                <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{formatSize(d.size_bytes)}</span>
+                <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
+                  {d.modified_at ? new Date(d.modified_at).toLocaleString() : ''}
+                </span>
+                <span style={{ flex: 1 }} />
+                <button onClick={() => handleDelete(d.name)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)',
+                  padding: '2px 6px', fontSize: 16, lineHeight: 1,
+                }} title="Delete">×</button>
+              </div>
+              {expandedDoc === d.name && (
+                <pre style={{
+                  background: 'var(--bg-secondary)', padding: 12, borderRadius: 8,
+                  fontSize: 12, overflow: 'auto', maxHeight: 400, margin: '8px 0 12px',
+                  border: '1px solid var(--border)', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                }}>{docContent}</pre>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
   const [bot, setBot] = useState(null);
   const [runs, setRuns] = useState([]);
   const [results, setResults] = useState([]);
-  const [docs, setDocs] = useState([]);
-  const [logs, setLogs] = useState([]);
+    const [logs, setLogs] = useState([]);
   const [tab, setTab] = useState('results');
   const logRef = useRef(null);
 
   const load = async () => {
-    const [b, r, res, d] = await Promise.all([
-      api.getBot(botId), api.listRuns(botId), api.listResults(botId), api.listDocs(botId),
+    const [b, r, res] = await Promise.all([
+      api.getBot(botId), api.listRuns(botId), api.listResults(botId),
     ]);
-    setBot(b); setRuns(r); setResults(res); setDocs(d);
+    setBot(b); setRuns(r); setResults(res);
   };
 
   useEffect(() => { load(); }, [botId]);
@@ -154,15 +252,7 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
         )}
 
         {tab === 'docs' && (
-          <div className="card" style={{ padding: 20 }}>
-            {docs.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>No documents.</p>
-            ) : docs.map(d => (
-              <div key={d.name} className="flex items-center gap-2" style={{ padding: '6px 0', fontSize: 14, color: 'var(--text-secondary)' }}>
-                <FileText size={14} strokeWidth={1.5} /> {d.name}
-              </div>
-            ))}
-          </div>
+          <DocsTab botId={botId} />
         )}
 
         {tab === 'log' && (
