@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Search, Link, Settings as SettingsIcon, Moon, Sun, Menu, X, LayoutDashboard } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Link, Settings as SettingsIcon, Moon, Sun } from 'lucide-react';
 import { api } from './api';
 import Dashboard from './components/Dashboard';
 import BotDetail from './components/BotDetail';
@@ -13,7 +13,7 @@ import Onboarding from './components/Onboarding';
 import Login from './components/Login';
 
 export default function App() {
-  const [authState, setAuthState] = useState(null);
+  const [authState, setAuthState] = useState(null); // null=loading, 'login', 'setup', 'ok'
   const [bots, setBots] = useState([]);
   const [view, setView] = useState({ page: 'dashboard' });
   const [showNewBot, setShowNewBot] = useState(false);
@@ -25,31 +25,15 @@ export default function App() {
   const [triggers, setTriggers] = useState([]);
   const [hasKeys, setHasKeys] = useState(true);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
 
-  // Close hamburger on click outside
-  useEffect(() => {
-    if (!menuOpen) {return;}
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler);
-    return () => {
-      document.removeEventListener('mousedown', handler);
-      document.removeEventListener('touchstart', handler);
-    };
-  }, [menuOpen]);
-
+  // Check auth on mount
   useEffect(() => {
     fetch('/api/auth/status', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         if (data.setup_required) {setAuthState('setup');}
         else {
+          // Try fetching a protected route to check session
           fetch('/api/bots', { credentials: 'include' })
             .then(r => { setAuthState(r.ok ? 'ok' : 'login'); })
             .catch(() => setAuthState('login'));
@@ -74,8 +58,12 @@ export default function App() {
   }, []);
 
   const refresh = async () => {
-    const [b, a, t] = await Promise.all([api.listBots(), api.activity(), api.listTriggers()]);
-    setBots(b); setActivity(a); setTriggers(t);
+    try {
+      const [b, a, t] = await Promise.all([api.listBots(), api.activity(), api.listTriggers()]);
+      setBots(b); setActivity(a); setTriggers(t);
+    } catch (e) {
+      if (e.message?.startsWith('401')) { setAuthState('login'); }
+    }
   };
 
   const checkKeys = async () => {
@@ -85,10 +73,11 @@ export default function App() {
     } catch { setHasKeys(false); }
   };
 
-  useEffect(() => { refresh(); checkKeys(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, []);
+  useEffect(() => { if (authState !== 'ok') {return;} refresh(); checkKeys(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, [authState]);
 
-  const nav = (page) => { setView({ page }); setMenuOpen(false); };
+  const nav = (page) => setView({ page });
 
+  // Auth gate
   if (authState === null) {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
       <div style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Loading...</div>
@@ -102,12 +91,12 @@ export default function App() {
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)', backgroundImage: darkMode ? 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(230, 57, 70, 0.04) 0%, transparent 70%)' : 'none' }}>
       {/* Header */}
       <header className="header-bar" style={{ padding: '0 24px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div className="header-logo" style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', minWidth: 200 }} onClick={() => nav('dashboard')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', minWidth: 200 }} onClick={() => nav('dashboard')}>
           <img src="/logo.png" alt="openOrchestrator" style={{ width: 28, height: 28, borderRadius: 6 }} />
-          <span className="header-logo-text" style={{ fontSize: 15, fontWeight: 650, letterSpacing: '-0.02em' }}>openOrchestrator</span>
+          <span style={{ fontSize: 15, fontWeight: 650, letterSpacing: '-0.02em' }}>openOrchestrator</span>
         </div>
 
-        <button className="header-search" onClick={() => setShowSearch(true)} style={{
+        <button onClick={() => setShowSearch(true)} style={{
           height: 32, borderRadius: 8, padding: '0 14px',
           background: 'var(--bg-tertiary)', border: '1px solid var(--border)',
           cursor: 'pointer', fontSize: 13, color: 'var(--text-tertiary)',
@@ -122,21 +111,21 @@ export default function App() {
           <kbd style={{ fontSize: 10, marginLeft: 'auto', opacity: 0.35, fontFamily: 'inherit' }}>⌘K</kbd>
         </button>
 
-        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 200, justifyContent: 'flex-end' }}>
-          <button className="icon-btn header-desktop-only" data-active={view.page === 'pipelines'} onClick={() => nav('pipelines')} title="Pipelines"
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 200, justifyContent: 'flex-end' }}>
+          <button className="icon-btn" data-active={view.page === 'pipelines'} onClick={() => nav('pipelines')} title="Pipelines"
             style={{ width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Link size={18} strokeWidth={1.5} />
           </button>
-          <button className="icon-btn header-desktop-only" data-active={view.page === 'settings'} onClick={() => nav('settings')} title="Settings"
+          <button className="icon-btn" data-active={view.page === 'settings'} onClick={() => nav('settings')} title="Settings"
             style={{ width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <SettingsIcon size={18} strokeWidth={1.5} />
           </button>
-          <button className="icon-btn header-desktop-only" onClick={() => setDarkMode(!darkMode)} title={darkMode ? 'Light Mode' : 'Dark Mode'}
+          <button className="icon-btn" onClick={() => setDarkMode(!darkMode)} title={darkMode ? 'Light Mode' : 'Dark Mode'}
             style={{ width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {darkMode ? <Sun size={18} strokeWidth={1.5} /> : <Moon size={18} strokeWidth={1.5} />}
           </button>
-          <div className="header-desktop-only" style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 6px' }} />
-          <button className="header-desktop-only" onClick={() => setShowTemplates(true)} style={{
+          <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 6px' }} />
+          <button onClick={() => setShowTemplates(true)} style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
             padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)',
             background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
@@ -146,48 +135,9 @@ export default function App() {
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
           >Templates</button>
-          <button onClick={() => setShowNewBot(true)} className="btn-primary header-new-bot" style={{
+          <button onClick={() => setShowNewBot(true)} className="btn-primary" style={{
             fontSize: 13, padding: '6px 16px', borderRadius: 8, fontWeight: 600,
           }}>+ New Bot</button>
-
-          {/* Hamburger button – mobile only */}
-          <div className="header-mobile-only" ref={menuRef} style={{ position: 'relative' }}>
-            <button className="icon-btn" onClick={() => setMenuOpen(!menuOpen)}
-              style={{ width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {menuOpen ? <X size={20} strokeWidth={1.5} /> : <Menu size={20} strokeWidth={1.5} />}
-            </button>
-
-            {menuOpen && (
-              <div className="hamburger-dropdown">
-                <button className="hamburger-item" data-active={view.page === 'dashboard'} onClick={() => nav('dashboard')}>
-                  <LayoutDashboard size={16} strokeWidth={1.5} />
-                  <span>Dashboard</span>
-                </button>
-                <button className="hamburger-item" data-active={view.page === 'pipelines'} onClick={() => nav('pipelines')}>
-                  <Link size={16} strokeWidth={1.5} />
-                  <span>Pipelines</span>
-                </button>
-                <button className="hamburger-item" onClick={() => { setShowSearch(true); setMenuOpen(false); }}>
-                  <Search size={16} strokeWidth={1.5} />
-                  <span>Search</span>
-                  <kbd style={{ fontSize: 10, marginLeft: 'auto', opacity: 0.35, fontFamily: 'inherit' }}>⌘K</kbd>
-                </button>
-                <button className="hamburger-item" onClick={() => { setShowTemplates(true); setMenuOpen(false); }}>
-                  <LayoutDashboard size={16} strokeWidth={1.5} />
-                  <span>Templates</span>
-                </button>
-                <button className="hamburger-item" data-active={view.page === 'settings'} onClick={() => nav('settings')}>
-                  <SettingsIcon size={16} strokeWidth={1.5} />
-                  <span>Settings</span>
-                </button>
-                <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
-                <button className="hamburger-item" onClick={() => { setDarkMode(!darkMode); setMenuOpen(false); }}>
-                  {darkMode ? <Sun size={16} strokeWidth={1.5} /> : <Moon size={16} strokeWidth={1.5} />}
-                  <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </header>
 
@@ -233,8 +183,7 @@ export default function App() {
           <Settings onBack={() => { nav('dashboard'); checkKeys(); }} />
         ) : (
           <BotDetail botId={view.botId} onBack={() => nav('dashboard')}
-            onRefresh={refresh} onEdit={(bot) => setEditBot(bot)}
-            onSelect={(id) => { refresh(); setView({ page: 'detail', botId: id }); }} />
+            onRefresh={refresh} onEdit={(bot) => setEditBot(bot)} />
         )}
       </main>
 

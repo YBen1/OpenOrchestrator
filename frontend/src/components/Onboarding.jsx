@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Key, CheckCircle2, XCircle, Loader2, ArrowRight, Check } from 'lucide-react';
+import { Key, CheckCircle2, XCircle, Loader2, ArrowRight, Check, Zap } from 'lucide-react';
 import { api } from '../api';
 
 const PROVIDERS = [
@@ -19,7 +19,7 @@ export default function Onboarding({ onComplete }) {
   const [result, setResult] = useState(null);
 
   const testAndSave = async () => {
-    if (!provider || !keyInput) return;
+    if (!provider || !keyInput) {return;}
     setTesting(true);
     setResult(null);
     const res = await api.validateKey(provider.id, keyInput);

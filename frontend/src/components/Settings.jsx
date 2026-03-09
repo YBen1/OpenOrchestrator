@@ -84,11 +84,6 @@ export default function Settings({ onBack }) {
   }, []);
 
   useEffect(() => {
-    const sysInterval = setInterval(() => { if (document.visibilityState !== 'hidden') {api.getSystem().then(setSystem);} }, 30000);
-    return () => clearInterval(sysInterval);
-  }, []);
-
-  useEffect(() => {
     if (tab === 'credentials') {setAdvancedOpen(true);}
   }, [tab, setAdvancedOpen]);
 
@@ -497,44 +492,46 @@ export default function Settings({ onBack }) {
         </div>
       )}
 
-      {tab === 'system' && system && (() => {
-        const fmt = (s) => { const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return [d&&d+'d',h&&h+'h',m&&m+'m'].filter(Boolean).join(' ')||'0m'; };
-        const fmtBytes = (b) => b>=1073741824?(b/1073741824).toFixed(1)+' GB':b>=1048576?(b/1048576).toFixed(1)+' MB':(b/1024).toFixed(1)+' KB';
-        return (
+      {tab === 'system' && system && (
         <div className="space-y-6">
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'Version', value: '🏷️ ' + system.version, color: 'var(--accent)' },
-              { label: 'Uptime', value: fmt(system.uptime_seconds || 0), color: '#5856D6' },
-              { label: 'Database', value: fmtBytes(system.db_size_bytes || 0), color: '#FF9500' },
-              { label: 'Engine', value: system.engine_status === 'online' ? '🟢 Online' : '🔴 Offline', color: system.engine_status === 'online' ? '#248A3D' : '#D70015' },
+              { label: 'Version', value: system.version, color: 'var(--accent)' },
+              { label: 'Bots', value: system.bots, color: '#5856D6' },
+              { label: 'Runs', value: system.runs, color: '#FF9500' },
             ].map(s => (
-              <div key={s.label} className="stat-card" style={{ borderRadius: 16 }}>
-                <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
-                <div className="stat-label">{s.label}</div>
+              <div key={s.label} className="card" style={{ padding: 20, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{s.label}</div>
               </div>
             ))}
           </div>
 
           <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Details</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>System Status</h3>
             <div className="space-y-3" style={{ fontSize: 14 }}>
-              {[
-                ['Python Version', system.python_version],
-                ['Node Version', system.node_version],
-                ['Hostname', system.hostname],
-                ['Total Bots', system.total_bots],
-                ['Total Runs', system.total_runs],
-                ['Total Pipelines', system.total_pipelines],
-                ['Active Scheduled Jobs', system.scheduler_jobs],
-                ['Free Disk Space', fmtBytes(system.disk_free_bytes || 0)],
-                ['Connected Providers', system.providers_connected?.join(', ') || 'None'],
-              ].map(([label, value]) => (
-                <div key={label} className="flex justify-between">
-                  <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-                  <span style={{ fontWeight: 500 }}>{value}</span>
-                </div>
-              ))}
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Database</span>
+                <span style={{ fontWeight: 500 }}>{system.db_size_mb} MB</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Pipelines</span>
+                <span style={{ fontWeight: 500 }}>{system.pipelines}</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Scheduler</span>
+                <span style={{ fontWeight: 500, color: '#248A3D', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  {system.scheduler_running ? <><CheckCircle2 size={14} /> Active</> : <><XCircle size={14} /> Inactive</>}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Connected providers</span>
+                <span style={{ fontWeight: 500 }}>
+                  {system.providers_connected?.length > 0
+                    ? system.providers_connected.join(', ')
+                    : 'None'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -559,8 +556,7 @@ export default function Settings({ onBack }) {
             </div>
           </div>
         </div>
-        );
-      })()}
+      )}
     </div>
   );
 }

@@ -53,14 +53,8 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         </p>
       </div>
 
-      <StatsCards activity={activity} />
-      <ActivityTimeline activity={activity} onSelect={onSelect} />
-
       <section style={{ marginBottom: 48 }}>
-        <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-          <SectionHeader title="My Bots" count={bots.length} />
-          <ImportBotButton onImported={onRefresh} />
-        </div>
+        <SectionHeader title="My Bots" count={bots.length} />
         {bots.length === 0 ? (
           <div className="card empty-state">
             <p className="empty-icon" style={{ display: 'flex', justifyContent: 'center' }}><Bot size={40} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} /></p>
@@ -121,162 +115,11 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
   );
 }
 
-/* ─── Stats Cards ─── */
-
-function formatNumber(n) {
-  if (n >= 1_000_000) {return (n / 1_000_000).toFixed(1) + 'M';}
-  if (n >= 1_000) {return (n / 1_000).toFixed(1) + 'k';}
-  return String(n);
-}
-
-function StatsCards({ activity }) {
-  if (!activity || activity.length === 0) {return null;}
-
-  const total = activity.length;
-  const completed = activity.filter(a => a.status === 'completed').length;
-  const rate = total > 0 ? (completed / total) * 100 : 0;
-  const rateColor = rate > 90 ? '#248A3D' : rate >= 70 ? '#B25000' : '#D70015';
-  const totalTokens = activity.reduce((s, a) => s + (a.tokens_used || ((a.tokens_in || 0) + (a.tokens_out || 0)) || 0), 0);
-  const totalCost = activity.reduce((s, a) => s + (a.cost_estimate || 0), 0);
-
-  const cards = [
-    { label: 'Total Runs', value: String(total), color: '#007AFF' },
-    { label: 'Success Rate', value: rate.toFixed(1) + '%', color: rateColor },
-    { label: 'Total Tokens', value: formatNumber(totalTokens), color: '#8B5CF6' },
-    { label: 'Total Cost', value: '$' + totalCost.toFixed(2), color: '#F97316' },
-  ];
-
-  return (
-    <section style={{ marginBottom: 32 }}>
-      <div className="stats-grid" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 16,
-      }}>
-        {cards.map(c => (
-          <div key={c.label} style={{
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border)',
-            borderLeft: `4px solid ${c.color}`,
-            borderRadius: 16,
-            padding: 20,
-          }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>
-              {c.value}
-            </div>
-            <div style={{
-              fontSize: 12, color: 'var(--text-tertiary)',
-              textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4,
-            }}>
-              {c.label}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ─── Activity Timeline ─── */
-
-function relativeTime(dateStr) {
-  if (!dateStr) {return '';}
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const secs = Math.floor(diff / 1000);
-  if (secs < 60) {return 'just now';}
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) {return `${mins}m ago`;}
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) {return `${hrs}h ago`;}
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
-const PILL_STYLES = {
-  completed: { bg: '#248A3D22', color: '#248A3D' },
-  failed:    { bg: '#D7001522', color: '#D70015' },
-  running:   { bg: '#007AFF22', color: '#007AFF' },
-  cancelled: { bg: '#88888822', color: '#888888' },
-  timeout:   { bg: '#C9340022', color: '#C93400' },
-};
-
-function ActivityTimeline({ activity, onSelect }) {
-  if (!activity || activity.length === 0) {return null;}
-  const recent = activity.slice(0, 10);
-
-  return (
-    <section style={{ marginBottom: 32 }}>
-      <SectionHeader title="Recent Activity" count={recent.length} />
-      <div className="card" style={{ overflow: 'hidden' }}>
-        {recent.map((a, i) => {
-          const pill = PILL_STYLES[a.status] || PILL_STYLES.cancelled;
-          const tokens = a.tokens_used || ((a.tokens_in || 0) + (a.tokens_out || 0)) || 0;
-          return (
-            <div key={a.id} style={{
-              padding: '10px 20px',
-              display: 'flex', alignItems: 'center', gap: 10,
-              fontSize: 13,
-              borderTop: i > 0 ? '1px solid var(--divider)' : 'none',
-              cursor: 'pointer',
-              transition: 'background 0.15s',
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              onClick={() => a.bot_id && onSelect(a.bot_id)}
-            >
-              <BotEmoji emoji={a.bot_emoji} name={a.bot_name} size={22} />
-              <span style={{
-                fontWeight: 600, minWidth: 80, maxWidth: 120,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{a.bot_name}</span>
-              <span style={{
-                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6,
-                background: pill.bg, color: pill.color,
-              }}>{a.status}</span>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: 12, marginLeft: 'auto', flexShrink: 0 }}>
-                {tokens > 0 && <span style={{ marginRight: 10 }}>{formatNumber(tokens)} tok</span>}
-                {relativeTime(a.started_at)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/* ─── Helpers ─── */
-
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) {return 'Good Morning';}
   if (h < 18) {return 'Good Afternoon';}
   return 'Good Evening';
-}
-
-function ImportBotButton({ onImported }) {
-  const fileRef = useRef(null);
-  const handleImport = async (e) => {
-    const file = e.target.files[0];
-    if (!file) {return;}
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      await api.importBot(data);
-      if (onImported) {onImported();}
-    } catch (err) {
-      alert('Import failed: ' + err.message);
-    }
-    if (fileRef.current) {fileRef.current.value = '';}
-  };
-  return (
-    <>
-      <input type="file" accept=".json" ref={fileRef} onChange={handleImport} style={{ display: 'none' }} />
-      <button onClick={() => fileRef.current?.click()} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}>
-        <Upload size={14} strokeWidth={1.5} /> Import Bot
-      </button>
-    </>
-  );
 }
 
 function SectionHeader({ title, count }) {
@@ -324,7 +167,7 @@ function ActivityFeed({ activity, onSelect }) {
 
   return (
     <section>
-      <SectionHeader title="Activity Log" count={activity.length} />
+      <SectionHeader title="Recent Activity" count={activity.length} />
       <div className="card" style={{ overflow: 'hidden' }}>
         {activity.map((a, i) => {
           const s = STATUS[a.status] || STATUS.cancelled;

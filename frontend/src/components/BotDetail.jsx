@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Play, Pencil, Download, BarChart3, Trash2, RefreshCw, FileText, Copy, Send, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Play, Pencil, Download, BarChart3, Trash2, RefreshCw, FileText, Copy } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { api, connectWs } from '../api';
 
@@ -7,186 +7,6 @@ function formatSize(bytes) {
   if (bytes < 1024) {return bytes + ' B';}
   if (bytes < 1024 * 1024) {return (bytes / 1024).toFixed(1) + ' KB';}
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-
-function ChatTab({ botId }) {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [streaming, setStreaming] = useState(false);
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => { scrollToBottom(); }, [messages]);
-
-  const sendMessage = async () => {
-    const text = input.trim();
-    if (!text || streaming) {return;}
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: text }]);
-    setStreaming(true);
-
-    // Add empty assistant message
-    setMessages(prev => [...prev, { role: 'assistant', content: '', loading: true }]);
-
-    try {
-      const res = await fetch(`/api/bots/${botId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
-      });
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {break;}
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) {continue;}
-          try {
-            const event = JSON.parse(line.slice(6));
-            if (event.type === 'token') {
-              fullText += event.text;
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: fullText, loading: false };
-                return updated;
-              });
-            } else if (event.type === 'done') {
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: event.output || fullText, loading: false };
-                return updated;
-              });
-            } else if (event.type === 'error') {
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: '⚠️ ' + event.message, loading: false };
-                return updated;
-              });
-            }
-          } catch {}
-        }
-      }
-    } catch (err) {
-      setMessages(prev => {
-        const updated = [...prev];
-        updated[updated.length - 1] = { role: 'assistant', content: '⚠️ Connection error: ' + err.message, loading: false };
-        return updated;
-      });
-    }
-    setStreaming(false);
-    inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', height: 500, padding: 0, overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {messages.length === 0 && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-quaternary)', fontSize: 14 }}>
-            Send a message to start chatting...
-          </div>
-        )}
-        {messages.map((msg, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-            <div style={{
-              maxWidth: '80%',
-              padding: '12px 16px',
-              fontSize: 14,
-              lineHeight: 1.5,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              ...(msg.role === 'user' ? {
-                background: 'var(--accent)',
-                color: 'white',
-                borderRadius: '18px 18px 4px 18px',
-              } : {
-                background: 'var(--bg-tertiary)',
-                borderRadius: '18px 18px 18px 4px',
-              }),
-            }}>
-              {msg.loading ? (
-                <span className="typing-dots">
-                  <span style={{ animation: 'pulse 1.4s infinite', animationDelay: '0s' }}>●</span>
-                  <span style={{ animation: 'pulse 1.4s infinite', animationDelay: '0.2s' }}>●</span>
-                  <span style={{ animation: 'pulse 1.4s infinite', animationDelay: '0.4s' }}>●</span>
-                </span>
-              ) : msg.content}
-            </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
-          rows={1}
-          style={{
-            flex: 1,
-            borderRadius: 24,
-            padding: '12px 20px',
-            border: '1px solid var(--border)',
-            background: 'var(--bg-secondary)',
-            color: 'var(--text-primary)',
-            fontSize: 14,
-            resize: 'none',
-            outline: 'none',
-            fontFamily: 'inherit',
-            maxHeight: 120,
-            overflowY: 'auto',
-          }}
-        />
-        <button
-          onClick={sendMessage}
-          disabled={!input.trim() || streaming}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: input.trim() && !streaming ? 'var(--accent)' : 'var(--bg-tertiary)',
-            border: 'none',
-            cursor: input.trim() && !streaming ? 'pointer' : 'default',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            transition: 'background 0.2s',
-          }}
-        >
-          <Send size={16} strokeWidth={2} color={input.trim() && !streaming ? 'white' : 'var(--text-quaternary)'} />
-        </button>
-      </div>
-      <style>{`
-        @keyframes pulse {
-          0%, 80%, 100% { opacity: 0.3; }
-          40% { opacity: 1; }
-        }
-        .typing-dots { display: flex; gap: 4px; font-size: 10px; color: var(--text-tertiary); }
-      `}</style>
-    </div>
-  );
 }
 
 function DocsTab({ botId }) {
@@ -282,7 +102,7 @@ function DocsTab({ botId }) {
   );
 }
 
-export default function BotDetail({ botId, onBack, onRefresh, onEdit, onSelect }) {
+export default function BotDetail({ botId, onBack, onRefresh, onEdit }) {
   const [bot, setBot] = useState(null);
   const [runs, setRuns] = useState([]);
   const [results, setResults] = useState([]);
@@ -321,7 +141,6 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit, onSelect }
     { key: 'runs', label: 'Runs', icon: <RefreshCw size={15} strokeWidth={1.5} /> },
     { key: 'docs', label: 'Documents', icon: <FileText size={15} strokeWidth={1.5} /> },
     { key: 'log', label: 'Live Log', icon: <BarChart3 size={15} strokeWidth={1.5} /> },
-    { key: 'chat', label: 'Chat', icon: <MessageSquare size={15} strokeWidth={1.5} /> },
   ];
 
   return (
@@ -356,12 +175,6 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit, onSelect }
             Object.assign(document.createElement('a'), { href: url, download: `${bot.name}.json` }).click();
           }} className="btn-ghost" title="Export bot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
             <Download size={16} strokeWidth={1.5} />
-          </button>
-          <button onClick={async () => {
-            const dup = await api.duplicateBot(botId);
-            if (dup && dup.id) { if (onSelect) {onSelect(dup.id);} else { onBack(); setTimeout(() => onRefresh && onRefresh(), 100); } }
-          }} className="btn-ghost" title="Duplicate bot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
-            <Copy size={16} strokeWidth={1.5} />
           </button>
           <a href={api.exportCsv(botId)} className="btn-ghost" title="Export CSV" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34 }}>
             <BarChart3 size={16} strokeWidth={1.5} />
@@ -448,10 +261,6 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit, onSelect }
               <p style={{ color: 'var(--text-quaternary)' }}>Start a bot run to see live logs...</p>
             ) : logs.map((line, i) => <div key={i} style={{ padding: '1px 0' }}>{line}</div>)}
           </div>
-        )}
-
-        {tab === 'chat' && (
-          <ChatTab botId={botId} />
         )}
       </div>
     </div>

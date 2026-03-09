@@ -1,7 +1,7 @@
 const BASE = '/api';
 
 async function request(path, opts = {}) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${BASE}${path}`, { credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...opts.headers },
     ...opts,
   });
@@ -44,7 +44,7 @@ export const api = {
   exportBot: (id) => request(`/bots/${id}/export`),
   importBot: (data) => request('/bots/import', { method: 'POST', body: JSON.stringify(data) }),
   exportCsv: (id) => `${BASE}/bots/${id}/export-csv`,
-  getSystem: () => request('/system/info'),
+  getSystem: () => request('/system'),
   // Telegram connect
   telegramConnect: () => request('/telegram/connect', { method: 'POST' }),
   telegramStatus: (token) => request(`/telegram/status/${token}`),

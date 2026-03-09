@@ -36,7 +36,7 @@ def auth_setup(data: PasswordRequest, db: Session = Depends(get_db)):
     set_master_hash(db, data.password)
     token = create_session()
     resp = JSONResponse({"ok": True})
-    resp.set_cookie("session", token, httponly=True, samesite="lax", max_age=86400 * 7)
+    resp.set_cookie("session", token, httponly=True, samesite="lax", secure=True, path="/", max_age=86400 * 7)
     return resp
 
 
@@ -50,7 +50,7 @@ def auth_login(data: PasswordRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Wrong password.")
     token = create_session()
     resp = JSONResponse({"ok": True})
-    resp.set_cookie("session", token, httponly=True, samesite="lax", max_age=86400 * 7)
+    resp.set_cookie("session", token, httponly=True, samesite="lax", secure=True, path="/", max_age=86400 * 7)
     return resp
 
 
