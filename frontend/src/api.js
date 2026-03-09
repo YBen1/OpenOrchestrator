@@ -5,7 +5,7 @@ async function request(path, opts = {}) {
     headers: { 'Content-Type': 'application/json', ...opts.headers },
     ...opts,
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) {throw new Error(`${res.status} ${res.statusText}`);}
   return res.json();
 }
 
@@ -44,7 +44,7 @@ export const api = {
   exportBot: (id) => request(`/bots/${id}/export`),
   importBot: (data) => request('/bots/import', { method: 'POST', body: JSON.stringify(data) }),
   exportCsv: (id) => `${BASE}/bots/${id}/export-csv`,
-  getSystem: () => request('/system'),
+  getSystem: () => request('/system/info'),
   // Telegram connect
   telegramConnect: () => request('/telegram/connect', { method: 'POST' }),
   telegramStatus: (token) => request(`/telegram/status/${token}`),

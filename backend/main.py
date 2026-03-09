@@ -2,6 +2,9 @@
 
 Slim entrypoint. Route groups are in routers/.
 """
+import time
+APP_START_TIME = time.time()
+
 import os
 import json
 import asyncio
@@ -589,30 +592,72 @@ def export_csv(bot_id: str, db: Session = Depends(get_db)):
 
 # ── System Info ───────────────────────────────────────────
 
+@app.get("/api/system/info")
 @app.get("/api/system")
-def system_info(db: Session = Depends(get_db)):
+def system_info(db: Session = Depends(get_db), _user=Depends(require_auth)):
     """System status overview."""
-    import sqlite3
+    import platform
+    import socket
+    import shutil
+    import subprocess as _sp
+
     bot_count = db.query(func.count(Bot.id)).scalar()
     run_count = db.query(func.count(Run.id)).scalar()
     pipeline_count = db.query(func.count(Pipeline.id)).scalar()
+
     # DB size
-    db_path = os.getenv("DATABASE_URL", "sqlite:///./openorchestrator.db").replace("sqlite:///", "")
+    db_path = Config.DB_PATH
     db_size = os.path.getsize(db_path) if os.path.exists(db_path) else 0
+
+    # Node version
+    try:
+        node_ver = _sp.check_output(["node", "--version"], timeout=5).decode().strip()
+    except Exception:
+        node_ver = "unknown"
+
+    # Engine status
+    engine_url = "http://localhost:18810"
+    try:
+        import urllib.request
+        req = urllib.request.urlopen(engine_url + "/health", timeout=3)
+        engine_status = "online" if req.status == 200 else "offline"
+    except Exception:
+        engine_status = "offline"
+
+    # Scheduler jobs
+    from scheduler import _registered_jobs
+    scheduler_jobs = len(_registered_jobs)
+
+    # Disk free
+    disk = shutil.disk_usage("/")
+
     # Active keys
     keys_set = []
     for key in ["openai_api_key", "anthropic_api_key", "google_api_key", "mistral_api_key"]:
         s = db.query(Setting).get(key)
         if s and s.value:
             keys_set.append(key.replace("_api_key", "").capitalize())
+
     return {
         "version": "0.3.0",
+        "uptime_seconds": round(time.time() - APP_START_TIME),
+        "python_version": platform.python_version(),
+        "node_version": node_ver,
+        "db_size_bytes": db_size,
+        "db_size_mb": round(db_size / 1024 / 1024, 2),
+        "total_bots": bot_count,
+        "total_runs": run_count,
+        "total_pipelines": pipeline_count,
         "bots": bot_count,
         "runs": run_count,
         "pipelines": pipeline_count,
-        "db_size_mb": round(db_size / 1024 / 1024, 2),
+        "engine_status": engine_status,
+        "engine_url": engine_url,
+        "scheduler_jobs": scheduler_jobs,
+        "scheduler_running": scheduler_jobs > 0 or True,
+        "disk_free_bytes": disk.free,
+        "hostname": socket.gethostname(),
         "providers_connected": keys_set,
-        "scheduler_running": True,  # If we got here, it's running
     }
 
 
@@ -699,6 +744,65 @@ def telegram_disconnect(link_id: str, db: Session = Depends(get_db)):
     if not link:
         raise HTTPException(404, "Connection not found")
     db.delete(link)
+@app.post("/api/bots/{bot_id}/chat")
+async def chat_bot_endpoint(bot_id: str, data: dict, db: Session = Depends(get_db)):
+    """Interactive chat with a bot — streams response as SSE."""
+    from engine import run_agent_stream, get_api_keys
+    from bot_runner import _build_context, _get_bot_workspace
+    import json as _json
+
+    bot = db.query(Bot).get(bot_id)
+    if not bot:
+        raise HTTPException(404, "Bot not found")
+
+    message = data.get("message", "").strip()
+    if not message:
+        raise HTTPException(400, "message is required")
+
+    # Build system prompt from bot context
+    system_prompt = _build_context(bot, db)
+    api_keys = get_api_keys(db)
+
+    # Parse tools
+    enabled_tools = []
+    try:
+        enabled_tools = _json.loads(bot.tools) if bot.tools else []
+    except Exception:
+        pass
+    legacy_map = {"Code": "exec", "code": "exec", "Files": "write", "files": "write"}
+    engine_tools = []
+    for t in enabled_tools:
+        mapped = legacy_map.get(t, t)
+        if mapped not in engine_tools:
+            engine_tools.append(mapped)
+
+    timeout = bot.max_runtime_seconds if hasattr(bot, 'max_runtime_seconds') and bot.max_runtime_seconds else 120
+
+    async def generate():
+        full_output = ""
+        try:
+            async for event in run_agent_stream(
+                prompt=system_prompt,
+                input_text=message,
+                model=bot.model,
+                tools=engine_tools,
+                api_keys=api_keys,
+                max_time_seconds=timeout,
+            ):
+                if event.get("type") == "text_delta":
+                    delta = event.get("delta", "")
+                    full_output += delta
+                    yield f"data: {_json.dumps({'type': 'token', 'text': delta})}\n\n"
+                elif event.get("type") == "complete":
+                    full_output = event.get("output", full_output)
+                    yield f"data: {_json.dumps({'type': 'done', 'output': full_output})}\n\n"
+                elif event.get("type") == "error":
+                    yield f"data: {_json.dumps({'type': 'error', 'message': event.get('message', 'Unknown error')})}\n\n"
+        except Exception as e:
+            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
     db.commit()
     return {"ok": True}
 
