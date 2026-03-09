@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bot, Loader2, XCircle, ArrowRight, X, Plus } from 'lucide-react';
+import { Bot, Loader2, XCircle } from 'lucide-react';
 import BotCard from './BotCard';
 import BotEmoji from './BotEmoji';
-import { api } from '../api';
 
 export default function Dashboard({ bots, activity, triggers, onSelect, onRun, onEdit, onRefresh }) {
   const [botStatuses, setBotStatuses] = useState({});
@@ -75,126 +74,44 @@ export default function Dashboard({ bots, activity, triggers, onSelect, onRun, o
         )}
       </section>
 
-      <AutomationsSection bots={bots} triggers={triggers} onRefresh={onRefresh} />
+      {triggers.length > 0 && (
+        <section style={{ marginBottom: 48 }}>
+          <SectionHeader title="Connections" count={triggers.length} />
+          <div className="card" style={{ overflow: 'hidden' }}>
+            {triggers.map((t, i) => {
+              const src = bots.find(b => b.id === t.source_bot);
+              const tgt = bots.find(b => b.id === t.target_bot);
+              return (
+                <div key={t.id} style={{
+                  padding: '14px 20px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  fontSize: 14,
+                  borderTop: i > 0 ? '1px solid var(--divider)' : 'none',
+                }}>
+                  <Chip label={src?.name || t.source_bot} emoji={src?.emoji} />
+                  <span style={{
+                    color: 'var(--text-quaternary)', fontSize: 11, fontWeight: 600,
+                    letterSpacing: '0.04em', textTransform: 'uppercase',
+                  }}>{t.event}</span>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M3 8h10M10 5l3 3-3 3" stroke="var(--text-quaternary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <Chip label={tgt?.name || t.target_bot} emoji={tgt?.emoji} />
+                  {!t.enabled && (
+                    <span style={{
+                      marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)',
+                      background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: 6,
+                    }}>Paused</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <ActivityFeed activity={activity} onSelect={onSelect} />
     </div>
-  );
-}
-
-
-function AutomationsSection({ bots, triggers, onRefresh }) {
-  const [showForm, setShowForm] = useState(false);
-  const [sourceBot, setSourceBot] = useState('');
-  const [event, setEvent] = useState('completed');
-  const [targetBot, setTargetBot] = useState('');
-  const [creating, setCreating] = useState(false);
-
-  const handleCreate = async () => {
-    if (!sourceBot || !targetBot) {return;}
-    setCreating(true);
-    try {
-      await api.createTrigger({ source_bot: sourceBot, event, target_bot: targetBot, target_action: 'start' });
-      setShowForm(false);
-      setSourceBot(''); setEvent('completed'); setTargetBot('');
-      if (onRefresh) {onRefresh();}
-    } catch (e) { console.error(e); }
-    setCreating(false);
-  };
-
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this automation?')) {return;}
-    try {
-      await api.deleteTrigger(id);
-      if (onRefresh) {onRefresh();}
-    } catch (e) { console.error(e); }
-  };
-
-  const selectStyle = {
-    background: 'var(--bg-tertiary)', border: '1px solid var(--divider)',
-    borderRadius: 10, padding: '8px 12px', fontSize: 13, color: 'var(--text-primary)',
-    outline: 'none', flex: 1, minWidth: 0,
-  };
-
-  return (
-    <section style={{ marginBottom: 48 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-          Automations
-        </h2>
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>{triggers.length}</span>
-        <button onClick={() => setShowForm(!showForm)} style={{
-          marginLeft: 'auto', background: 'none', border: '1px solid var(--divider)',
-          borderRadius: 10, padding: '6px 14px', fontSize: 13, fontWeight: 600,
-          color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-        }}>
-          <Plus size={14} /> Add Automation
-        </button>
-      </div>
-
-      {showForm && (
-        <div className="card" style={{ padding: 20, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0 }}>When</span>
-          <select value={sourceBot} onChange={e => setSourceBot(e.target.value)} style={selectStyle}>
-            <option value="">Select bot…</option>
-            {bots.map(b => <option key={b.id} value={b.id}>{b.emoji || '🤖'} {b.name}</option>)}
-          </select>
-          <select value={event} onChange={e => setEvent(e.target.value)} style={selectStyle}>
-            <option value="completed">completes</option>
-            <option value="failed">fails</option>
-          </select>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0 }}>then run</span>
-          <select value={targetBot} onChange={e => setTargetBot(e.target.value)} style={selectStyle}>
-            <option value="">Select bot…</option>
-            {bots.map(b => <option key={b.id} value={b.id}>{b.emoji || '🤖'} {b.name}</option>)}
-          </select>
-          <button onClick={handleCreate} disabled={!sourceBot || !targetBot || creating} style={{
-            background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10,
-            padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            opacity: (!sourceBot || !targetBot || creating) ? 0.5 : 1, flexShrink: 0,
-          }}>
-            {creating ? 'Creating…' : 'Create'}
-          </button>
-        </div>
-      )}
-
-      {triggers.length === 0 ? (
-        <div className="card" style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
-          No automations yet — connect your bots!
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {triggers.map(t => {
-            const src = bots.find(b => b.id === t.source_bot);
-            const tgt = bots.find(b => b.id === t.target_bot);
-            const isCompleted = t.event === 'completed';
-            return (
-              <div key={t.id} className="card" style={{
-                padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, fontSize: 14,
-              }}>
-                <Chip label={src?.name || t.source_bot} emoji={src?.emoji} />
-                <span style={{
-                  fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
-                  padding: '3px 8px', borderRadius: 6,
-                  background: isCompleted ? 'rgba(36,138,61,0.12)' : 'rgba(215,0,21,0.12)',
-                  color: isCompleted ? '#248A3D' : '#D70015',
-                }}>
-                  on {t.event}
-                </span>
-                <ArrowRight size={16} style={{ color: 'var(--text-quaternary)', flexShrink: 0 }} />
-                <Chip label={tgt?.name || t.target_bot} emoji={tgt?.emoji} />
-                <button onClick={() => handleDelete(t.id)} style={{
-                  marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--text-tertiary)', padding: 4, borderRadius: 6, display: 'flex',
-                }} title="Delete automation">
-                  <X size={16} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </section>
   );
 }
 
