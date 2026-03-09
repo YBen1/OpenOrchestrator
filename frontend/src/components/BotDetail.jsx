@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Play, Pencil, Download, BarChart3, Trash2, RefreshCw, FileText, Copy, Send, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Play, Pencil, Download, BarChart3, Trash2, RefreshCw, FileText, Copy, Send, MessageSquare } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { api, connectWs } from '../api';
 
@@ -321,7 +321,7 @@ export default function BotDetail({ botId, onBack, onRefresh, onEdit, onSelect }
     { key: 'runs', label: 'Runs', icon: <RefreshCw size={15} strokeWidth={1.5} /> },
     { key: 'docs', label: 'Documents', icon: <FileText size={15} strokeWidth={1.5} /> },
     { key: 'log', label: 'Live Log', icon: <BarChart3 size={15} strokeWidth={1.5} /> },
-    { key: 'chat', label: 'Chat', icon: <MessageCircle size={15} strokeWidth={1.5} /> },
+    { key: 'chat', label: 'Chat', icon: <MessageSquare size={15} strokeWidth={1.5} /> },
   ];
 
   return (

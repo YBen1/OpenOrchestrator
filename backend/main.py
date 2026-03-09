@@ -745,7 +745,7 @@ def telegram_disconnect(link_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Connection not found")
     db.delete(link)
 @app.post("/api/bots/{bot_id}/chat")
-async def chat_bot_endpoint(bot_id: str, data: dict, db: Session = Depends(get_db)):
+async def chat_bot_endpoint(bot_id: str, data: dict, db: Session = Depends(get_db), _user=Depends(require_auth)):
     """Interactive chat with a bot — streams response as SSE."""
     from engine import run_agent_stream, get_api_keys
     from bot_runner import _build_context, _get_bot_workspace
@@ -803,8 +803,6 @@ async def chat_bot_endpoint(bot_id: str, data: dict, db: Session = Depends(get_d
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
-    db.commit()
-    return {"ok": True}
 
 
 @app.post("/api/telegram/test/{link_id}")
